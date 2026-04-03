@@ -71,7 +71,11 @@ pub fn parse(path: &Path) -> Result<Vec<Restaurant>> {
             }
         });
 
-        restaurants.push(Restaurant { name, address, location });
+        restaurants.push(Restaurant {
+            name,
+            address,
+            location,
+        });
     }
 
     Ok(restaurants)
@@ -105,7 +109,10 @@ mod tests {
     #[test]
     fn null_geometry_yields_none_location() {
         let restaurants = parse(&fixtures_dir().join("sample.geojson")).unwrap();
-        let r = restaurants.iter().find(|r| r.name == "Restaurant Sans Adresse").unwrap();
+        let r = restaurants
+            .iter()
+            .find(|r| r.name == "Restaurant Sans Adresse")
+            .unwrap();
         assert!(r.location.is_none());
     }
 }

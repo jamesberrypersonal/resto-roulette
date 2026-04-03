@@ -1,5 +1,5 @@
-use rand::SeedableRng;
 use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 use resto_roulette::bucket::{Bucket, BucketEntry, Buckets};
 use resto_roulette::picker::pick;
@@ -68,7 +68,10 @@ fn different_seeds_can_produce_different_picks() {
                 .name
         })
         .collect();
-    assert!(names.len() > 1, "expected both Near1 and Near2 to be picked across 50 seeds");
+    assert!(
+        names.len() > 1,
+        "expected both Near1 and Near2 to be picked across 50 seeds"
+    );
 }
 
 #[test]

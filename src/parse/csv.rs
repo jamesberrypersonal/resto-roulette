@@ -107,7 +107,10 @@ mod tests {
     #[test]
     fn simple_format_quoted_address_with_comma() {
         let restaurants = parse(&fixtures_dir().join("sample.csv")).unwrap();
-        let r = restaurants.iter().find(|r| r.name.contains("Cabane")).unwrap();
+        let r = restaurants
+            .iter()
+            .find(|r| r.name.contains("Cabane"))
+            .unwrap();
         assert!(r.address.contains("Fresnière"), "address={}", r.address);
     }
 
@@ -120,7 +123,10 @@ mod tests {
     #[test]
     fn maps_export_format_uses_title_as_name_and_address() {
         let restaurants = parse(&fixtures_dir().join("sample_maps_export.csv")).unwrap();
-        let r = restaurants.iter().find(|r| r.name == "Nouveau Palais").unwrap();
+        let r = restaurants
+            .iter()
+            .find(|r| r.name == "Nouveau Palais")
+            .unwrap();
         assert_eq!(r.address, "Nouveau Palais");
     }
 }

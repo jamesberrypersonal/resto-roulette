@@ -7,13 +7,12 @@ use futures::StreamExt;
 
 use resto_roulette::{
     bucket,
-    cache::Cache,
     cache::sqlite::hash_home,
+    cache::Cache,
     config::{self, Cli},
     display,
     error::AppError,
-    parse,
-    picker,
+    parse, picker,
     routing::RoutingClient,
 };
 
@@ -40,8 +39,7 @@ async fn main() -> anyhow::Result<()> {
     let cache_path = dirs::home_dir()
         .ok_or_else(|| AppError::Config("cannot find home directory".into()))?
         .join(".resto-roulette/cache.db");
-    let cache = Cache::open(&cache_path, cfg.cache_ttl_hours)
-        .context("failed to open cache")?;
+    let cache = Cache::open(&cache_path, cfg.cache_ttl_hours).context("failed to open cache")?;
 
     // Evict stale entries at startup (best-effort)
     match cache.evict_expired() {
@@ -63,14 +61,16 @@ async fn main() -> anyhow::Result<()> {
             let home = &cfg.home;
             let dry_run = cfg.dry_run;
             async move {
-                let cached = cache.get(&rid, home_id, dry_run)
-                    .unwrap_or_default();
+                let cached = cache.get(&rid, home_id, dry_run).unwrap_or_default();
 
                 let times = if cached.is_complete() {
                     tracing::debug!("Cache hit for '{}'", restaurant.name);
                     cached
                 } else if dry_run {
-                    tracing::debug!("Dry run: using partial/empty cache for '{}'", restaurant.name);
+                    tracing::debug!(
+                        "Dry run: using partial/empty cache for '{}'",
+                        restaurant.name
+                    );
                     cached
                 } else {
                     tracing::debug!("Fetching travel times for '{}'", restaurant.name);
@@ -78,7 +78,11 @@ async fn main() -> anyhow::Result<()> {
                         .get_travel_times(home, &restaurant.address, restaurant.location)
                         .await
                         .unwrap_or_else(|e| {
-                            tracing::warn!("Failed to fetch times for '{}': {}", restaurant.name, e);
+                            tracing::warn!(
+                                "Failed to fetch times for '{}': {}",
+                                restaurant.name,
+                                e
+                            );
                             Default::default()
                         });
                     if let Err(e) = cache.put(&rid, home_id, &fetched) {

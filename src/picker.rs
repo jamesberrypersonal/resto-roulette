@@ -40,8 +40,8 @@ mod tests {
     use crate::bucket::{Bucket, BucketEntry};
     use crate::routing::models::TravelMode;
     use crate::Restaurant;
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     fn entry(name: &str, bucket: Bucket) -> BucketEntry {
         BucketEntry {

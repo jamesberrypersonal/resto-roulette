@@ -12,8 +12,18 @@ fn restaurant(name: &str) -> Restaurant {
     }
 }
 
-fn times(walk: Option<u32>, bike: Option<u32>, transit: Option<u32>, drive: Option<u32>) -> TravelTimes {
-    TravelTimes { walk_secs: walk, bike_secs: bike, transit_secs: transit, drive_secs: drive }
+fn times(
+    walk: Option<u32>,
+    bike: Option<u32>,
+    transit: Option<u32>,
+    drive: Option<u32>,
+) -> TravelTimes {
+    TravelTimes {
+        walk_secs: walk,
+        bike_secs: bike,
+        transit_secs: transit,
+        drive_secs: drive,
+    }
 }
 
 fn single_bucket(
@@ -53,7 +63,10 @@ fn drive_only_within_60min_goes_to_far() {
 
 #[test]
 fn too_far_is_excluded() {
-    assert_eq!(single_bucket(Some(9999), Some(9999), Some(9999), Some(9999)), (0, 0, 0));
+    assert_eq!(
+        single_bucket(Some(9999), Some(9999), Some(9999), Some(9999)),
+        (0, 0, 0)
+    );
 }
 
 #[test]
@@ -89,7 +102,10 @@ fn multiple_restaurants_distributed_correctly() {
     map.insert(r_near.id(), times(Some(500), None, None, None));
     map.insert(r_mid.id(), times(None, Some(1500), None, None));
     map.insert(r_far.id(), times(None, None, None, Some(3000)));
-    map.insert(r_excluded.id(), times(Some(9999), Some(9999), Some(9999), Some(9999)));
+    map.insert(
+        r_excluded.id(),
+        times(Some(9999), Some(9999), Some(9999), Some(9999)),
+    );
 
     let buckets = assign(&[r_near, r_mid, r_far, r_excluded], &map);
     assert_eq!(buckets.near.len(), 1);

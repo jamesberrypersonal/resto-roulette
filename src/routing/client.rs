@@ -22,9 +22,7 @@ pub struct RoutingClient {
 
 impl RoutingClient {
     pub fn new(api_key: String) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()?;
+        let client = Client::builder().timeout(Duration::from_secs(10)).build()?;
         Ok(Self { client, api_key })
     }
 
@@ -40,7 +38,10 @@ impl RoutingClient {
         // For CSV input without coordinates, geocode to get a canonical address.
         // We still use the address string for routing (simpler, avoids lat/lng formatting).
         if destination_latlng.is_none() {
-            tracing::debug!("No coordinates for '{}', using address directly", destination);
+            tracing::debug!(
+                "No coordinates for '{}', using address directly",
+                destination
+            );
         }
 
         let (walk, bike, transit, drive) = tokio::join!(
@@ -65,8 +66,12 @@ impl RoutingClient {
         mode: ApiTravelMode,
     ) -> Result<Option<u32>> {
         let body = ComputeRoutesRequest {
-            origin: Waypoint { address: origin.to_string() },
-            destination: Waypoint { address: destination.to_string() },
+            origin: Waypoint {
+                address: origin.to_string(),
+            },
+            destination: Waypoint {
+                address: destination.to_string(),
+            },
             travel_mode: mode,
             compute_alternative_routes: false,
             route_modifiers: RouteModifiers::default(),

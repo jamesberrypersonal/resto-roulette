@@ -4,8 +4,8 @@ use crate::routing::models::{TravelMode, TravelTimes};
 use crate::Restaurant;
 
 const NEAR_SECS: u32 = 15 * 60; // 900
-const MID_SECS: u32 = 30 * 60;  // 1800
-const FAR_SECS: u32 = 60 * 60;  // 3600
+const MID_SECS: u32 = 30 * 60; // 1800
+const FAR_SECS: u32 = 60 * 60; // 3600
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 pub enum Bucket {
@@ -141,14 +141,27 @@ fn best_within(candidates: &[(Option<u32>, TravelMode)], limit: u32) -> Option<(
 mod tests {
     use super::*;
 
-    fn times(walk: Option<u32>, bike: Option<u32>, transit: Option<u32>, drive: Option<u32>) -> TravelTimes {
-        TravelTimes { walk_secs: walk, bike_secs: bike, transit_secs: transit, drive_secs: drive }
+    fn times(
+        walk: Option<u32>,
+        bike: Option<u32>,
+        transit: Option<u32>,
+        drive: Option<u32>,
+    ) -> TravelTimes {
+        TravelTimes {
+            walk_secs: walk,
+            bike_secs: bike,
+            transit_secs: transit,
+            drive_secs: drive,
+        }
     }
 
     #[test]
     fn walk_under_15min_is_near() {
         let result = classify(&times(Some(800), None, None, None));
-        assert!(matches!(result, Some((Bucket::Near, 800, TravelMode::Walk))));
+        assert!(matches!(
+            result,
+            Some((Bucket::Near, 800, TravelMode::Walk))
+        ));
     }
 
     #[test]
@@ -161,20 +174,29 @@ mod tests {
     fn walk_901_bike_within_mid_goes_to_mid() {
         // walk=901 (too far for near), bike=1500 qualifies for mid
         let result = classify(&times(Some(901), Some(1500), None, None));
-        assert!(matches!(result, Some((Bucket::Mid, 1500, TravelMode::Bike))));
+        assert!(matches!(
+            result,
+            Some((Bucket::Mid, 1500, TravelMode::Bike))
+        ));
     }
 
     #[test]
     fn drive_only_within_60min_goes_to_far() {
         let result = classify(&times(None, None, None, Some(3000)));
-        assert!(matches!(result, Some((Bucket::Far, 3000, TravelMode::Drive))));
+        assert!(matches!(
+            result,
+            Some((Bucket::Far, 3000, TravelMode::Drive))
+        ));
     }
 
     #[test]
     fn drive_does_not_qualify_for_near_or_mid() {
         // drive=100 — drive is not eligible for Near or Mid
         let result = classify(&times(None, None, None, Some(100)));
-        assert!(matches!(result, Some((Bucket::Far, 100, TravelMode::Drive))));
+        assert!(matches!(
+            result,
+            Some((Bucket::Far, 100, TravelMode::Drive))
+        ));
     }
 
     #[test]
@@ -200,6 +222,9 @@ mod tests {
     fn best_mode_is_fastest_eligible() {
         // bike=800, transit=500 — both qualify for Near, transit is faster
         let result = classify(&times(None, Some(800), Some(500), None));
-        assert!(matches!(result, Some((Bucket::Near, 500, TravelMode::Transit))));
+        assert!(matches!(
+            result,
+            Some((Bucket::Near, 500, TravelMode::Transit))
+        ));
     }
 }

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use chrono::{DateTime, Duration, Utc};
 use hex;
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
 use crate::error::Result;
@@ -213,8 +213,26 @@ mod tests {
         let (cache, _dir) = temp_cache(168);
         let rid = "r";
         let hid = "h";
-        cache.put(rid, hid, &TravelTimes { walk_secs: Some(300), ..Default::default() }).unwrap();
-        cache.put(rid, hid, &TravelTimes { walk_secs: Some(999), ..Default::default() }).unwrap();
+        cache
+            .put(
+                rid,
+                hid,
+                &TravelTimes {
+                    walk_secs: Some(300),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        cache
+            .put(
+                rid,
+                hid,
+                &TravelTimes {
+                    walk_secs: Some(999),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
         let result = cache.get(rid, hid, false).unwrap();
         assert_eq!(result.walk_secs, Some(999));
     }

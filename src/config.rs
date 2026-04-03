@@ -24,7 +24,10 @@ pub struct Config {
 
 /// Raw CLI arguments parsed by clap.
 #[derive(Debug, Parser)]
-#[command(name = "resto-roulette", about = "Random restaurant picker from your Google Maps saved list")]
+#[command(
+    name = "resto-roulette",
+    about = "Random restaurant picker from your Google Maps saved list"
+)]
 pub struct Cli {
     /// Home address or lat,lng (env: RESTO_HOME)
     #[arg(short = 'H', long, env = "RESTO_HOME")]
@@ -70,17 +73,15 @@ pub fn load(cli: Cli) -> Result<Config> {
         None => FileConfig::default(),
     };
 
-    let home = cli
-        .home
-        .or(file_cfg.home)
-        .ok_or(AppError::MissingHome)?;
+    let home = cli.home.or(file_cfg.home).ok_or(AppError::MissingHome)?;
 
     let api_key = cli
         .api_key
         .or(file_cfg.api_key)
         .ok_or(AppError::MissingApiKey)?;
 
-    let format_str = cli.format
+    let format_str = cli
+        .format
         .or(file_cfg.default_format)
         .unwrap_or_else(|| "pretty".into());
     let format = parse_format(&format_str)?;
@@ -102,7 +103,10 @@ fn parse_format(s: &str) -> Result<OutputFormat> {
     match s.to_lowercase().as_str() {
         "pretty" => Ok(OutputFormat::Pretty),
         "json" => Ok(OutputFormat::Json),
-        other => Err(AppError::Config(format!("unknown format '{}': expected 'pretty' or 'json'", other))),
+        other => Err(AppError::Config(format!(
+            "unknown format '{}': expected 'pretty' or 'json'",
+            other
+        ))),
     }
 }
 

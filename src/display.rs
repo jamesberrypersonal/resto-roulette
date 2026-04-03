@@ -80,7 +80,10 @@ fn render_json(selection: &Selection) {
         far: selection.far.as_ref().map(to_json_entry),
     };
 
-    println!("{}", serde_json::to_string_pretty(&output).unwrap_or_default());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&output).unwrap_or_default()
+    );
 }
 
 fn format_duration(secs: u32) -> String {
