@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-73.5605, 45.5090] },
+      "properties": {
+        "name": "Hà",
+        "address": "243 Rue De Bleury, Montréal, QC H2X 2G8, Canada"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-73.6040, 45.5276] },
+      "properties": {
+        "name": "Nouveau Palais",
+        "address": "281 Rue Bernard O, Montréal, QC H2V 1T5, Canada"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-73.7834, 45.6862] },
+      "properties": {
+        "name": "Cabane à sucre Au Pied de Cochon",
+        "address": "11382 Rang de la Fresnière, Saint-Benoît, QC J0N 1J0, Canada"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-73.5673, 45.5125] },
+      "properties": {
+        "name": "Joe Beef",
+        "address": "2491 Rue Notre-Dame O, Montréal, QC H3J 1N6, Canada"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "name": "Restaurant Sans Adresse",
+        "address": "Unknown Location, Montréal, QC"
+      }
+    }
+  ]
+}
