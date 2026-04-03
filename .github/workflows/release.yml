@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: "Path to markdown release notes file (relative to repo root)"
+        required: false
+        default: "RELEASE_NOTES.md"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            suffix: linux-amd64
+          - os: macos-latest
+            suffix: macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Rename binary
+        run: |
+          mv target/release/resto-roulette \
+            target/release/resto-roulette-v${{ steps.version.outputs.version }}-${{ matrix.suffix }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resto-roulette-v${{ steps.version.outputs.version }}-${{ matrix.suffix }}
+          path: target/release/resto-roulette-v${{ steps.version.outputs.version }}-${{ matrix.suffix }}
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract release notes for version
+        id: notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          FILE="${{ inputs.release_notes }}"
+          if [ ! -f "$FILE" ]; then
+            echo "::error::Release notes file '${FILE}' not found"
+            exit 1
+          fi
+          # Extract the section between ## vX.Y.Z and the next ## heading (or EOF)
+          NOTES=$(sed -n "/^## v${VERSION}\$/,/^## /{/^## v${VERSION}\$/d;/^## /d;p;}" "$FILE")
+          if [ -z "$NOTES" ]; then
+            echo "::error::No release notes found for v${VERSION} in ${FILE}"
+            exit 1
+          fi
+          # Write to a temp file for --notes-file
+          echo "$NOTES" > release_notes_current.md
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            artifacts/* \
+            --target main \
+            --title "v${{ steps.version.outputs.version }}" \
+            --notes-file release_notes_current.md
