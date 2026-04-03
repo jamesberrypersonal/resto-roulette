@@ -22,17 +22,19 @@ cargo doc --open       # browse generated docs
 
 ## Architecture
 
-The planned module layout (see `docs/initial-design-doc.md` for full detail):
+See `docs/initial-design-doc.md` for full detail.
 
-- **`src/main.rs`** — CLI entry point via `clap` derive macros; reads flags/env vars and calls into `lib.rs`.
-- **`src/config.rs`** — Resolves configuration precedence: `--flag` > env var > `~/.resto-roulette/config.toml`.
-- **`src/parse/`** — Two parsers (`geojson.rs`, `csv.rs`) that both produce `Vec<Restaurant>`. GeoJSON input includes coordinates (no geocoding needed); CSV triggers geocoding via Google Geocoding API.
-- **`src/routing/`** — HTTP client (`client.rs`) for Google Routes API (`routes.googleapis.com`). Queries all four travel modes (walk/bike/transit/drive) per restaurant. Hand-written request/response structs (no official Rust SDK).
-- **`src/cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Cache key is SHA-256(name + address) + SHA-256(home address) + mode. Default TTL: 1 week.
-- **`src/bucket.rs`** — Assigns each restaurant to exactly one bucket (the nearest it qualifies for). Bucket boundaries are at 15 min and 30 min.
-- **`src/picker.rs`** — Random selection from each bucket; seed the RNG for deterministic tests.
+- **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline with concurrent API fetching (`buffer_unordered(10)`).
+- **`src/config.rs`** — Resolves configuration precedence: `--flag` > env var > `~/.resto-roulette/config.toml`. Note: `--home` short flag is `-H` (not `-h`, which clap reserves for `--help`).
+- **`src/parse/`** — Three parser paths dispatched by file extension and CSV headers:
+  - `geojson.rs` — Google Takeout GeoJSON (includes coordinates; coordinate order is `[lng, lat]` per GeoJSON spec — the parser swaps to lat/lng).
+  - `csv.rs` — Auto-detects two formats: simple `name,address` CSV and Google Maps shared-list export (`Title,Note,URL,Tags,Comment`). The shared-list format uses the place name as the routing address.
+- **`src/routing/`** — HTTP client (`client.rs`) for Google Routes API. Queries all four travel modes (walk/bike/transit/drive) per restaurant in parallel via `tokio::join!`. The `X-Goog-FieldMask: routes.duration` header is required to stay on the Basic SKU. Response durations are protobuf strings (`"720s"`) requiring custom deserialization.
+- **`src/cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Cache key is SHA-256(name + `\x00` + address) + SHA-256(home address) + mode. Default TTL: 1 week. Expired entries are evicted at startup.
+- **`src/bucket.rs`** — Assigns each restaurant to exactly one bucket (the nearest it qualifies for). Mode eligibility per bucket: Near (walk/bike/transit), Mid (bike/transit only), Far (bike/transit/drive).
+- **`src/picker.rs`** — Random selection from each bucket; takes generic `R: Rng` for deterministic tests.
 - **`src/display.rs`** — `pretty` (colored terminal) and `json` output formatters.
-- **`src/error.rs`** — Unified `AppError` enum via `thiserror`. Empty-bucket errors are non-fatal (print a friendly message, continue).
+- **`src/error.rs`** — Unified `AppError` enum via `thiserror`. `main.rs` wraps it in `anyhow::Result` for context-rich error messages.
 
 ## Key Design Decisions
 
@@ -41,11 +43,11 @@ The planned module layout (see `docs/initial-design-doc.md` for full detail):
 - **Home address**: Same precedence — `--home` flag > `RESTO_HOME` env var > config file.
 - **`--dry-run`**: Uses stale cache without any API calls.
 - **`rusqlite` with `bundled` feature**: Compiles SQLite from source for zero system dependencies.
+- **Shared lists**: Google Takeout only exports lists you own. Shared lists from other users must be exported via the Google Maps shared-list CSV export.
 
 ## Testing Approach
 
 - Unit tests live in each module under `#[cfg(test)]`.
-- Integration tests in `tests/` use `wiremock` to mock the Google Routes API.
-- Property-based tests via `proptest` cover bucketing invariants and picker deduplication.
-- Test fixtures (`tests/fixtures/`) include `sample.geojson`, `sample.csv`, and a recorded `routes_response.json` for snapshot testing.
-- Seed the RNG when testing the picker for deterministic results.
+- Integration tests in `tests/` cover parsing, bucketing, and picker logic using fixture files.
+- Test fixtures (`tests/fixtures/`) include `sample.geojson`, `sample.csv`, `sample_maps_export.csv`, and `routes_response.json`.
+- Seed the RNG when testing the picker for deterministic results (`StdRng::seed_from_u64`).

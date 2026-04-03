@@ -27,12 +27,15 @@ Re-roll? [y/N]
 
 | Flag | Description | Default |
 |---|---|---|
-| `--home` / `-h` | Home address or lat,lng | `$RESTO_HOME` env var |
+| `--home` / `-H` | Home address or lat,lng | `$RESTO_HOME` env var |
 | `--list` / `-l` | Path to exported list file | `saved_places.csv` |
 | `--reroll` / `-r` | Interactive re-roll mode | off |
 | `--format` | Output format: `pretty`, `json` | `pretty` |
 | `--cache-ttl` | Hours to cache travel times | `168` (1 week) |
 | `--dry-run` | Show buckets without API calls (uses cache only) | off |
+| `--api-key` | Google Maps API key | `$GOOGLE_MAPS_API_KEY` env var |
+
+> **Note:** The short flag for `--home` is `-H` (uppercase), not `-h`, because clap reserves `-h` for `--help`.
 
 ## 3. Data Flow
 
@@ -72,7 +75,24 @@ Hà,243 Rue De Bleury Montréal QC
 Nouveau Palais,281 Rue Bernard O Montréal QC
 ```
 
-When coordinates are absent, the tool geocodes the address via the Google Geocoding API before computing travel times.
+When coordinates are absent, the Routes API resolves place names via its own geocoding (no separate Geocoding API call needed for routing).
+
+### Option C — Google Maps Shared-List CSV Export
+
+Google Maps allows exporting a shared list as a CSV file. This format has different columns from the simple CSV:
+
+```csv
+Title,Note,URL,Tags,Comment
+Nouveau Palais,,https://www.google.com/maps/place/Nouveau+Palais/data=!4m2!3m1!1s0x...,,
+Damas,French food,https://www.google.com/maps/place/Damas/data=!4m2!3m1!1s0x...,,
+```
+
+The CSV parser auto-detects this format by checking if the first header column is `Title`. In this case:
+- `Title` is used as both the restaurant name and the routing address (the Routes API resolves place names).
+- `Note` and `URL` columns are present but not used.
+- Blank rows (which Google includes after the header) are skipped.
+
+> **Important limitation:** Google Takeout only exports lists you own. Shared lists created by another user are not included in Takeout, so the shared-list CSV export (Option C) is the only way to get data from those lists.
 
 ### Input Parsing Strategy
 
@@ -80,12 +100,17 @@ When coordinates are absent, the tool geocodes the address via the Google Geocod
 flowchart LR
     A[Input File] --> B{Extension?}
     B -->|.geojson / .json| C[GeoJSON parser]
-    B -->|.csv| D[CSV parser]
-    C --> E[Unified Restaurant struct]
-    D --> E
+    B -->|.csv| D{First header?}
+    D -->|Title| E[Maps export parser]
+    D -->|name| F[Simple CSV parser]
+    C --> G[Unified Restaurant struct]
+    E --> G
+    F --> G
 ```
 
-Both parsers produce a `Vec<Restaurant>`:
+All parsers produce a `Vec<Restaurant>`:
+
+> **GeoJSON coordinate order gotcha:** The GeoJSON spec defines coordinates as `[longitude, latitude]`, which is the reverse of the intuitive lat/lng order. The parser must swap: `lat = coordinates[1]`, `lng = coordinates[0]`. Features with `"geometry": null` (e.g., saved areas rather than pins) are parsed with `location: None`.
 
 ```rust
 struct Restaurant {
@@ -104,7 +129,24 @@ struct LatLng {
 
 ### API Choice
 
-Use the **Google Routes API** (`routes.googleapis.com`), which is the successor to the Directions API. It supports computing routes for multiple travel modes in a single request via `computeRoutes`, and is the API Google is actively investing in.
+Use the **Google Routes API** (`routes.googleapis.com/directions/v2:computeRoutes`), which is the successor to the Directions API.
+
+#### Request Details
+
+Each request requires these headers:
+- `X-Goog-Api-Key` — the API key
+- `X-Goog-FieldMask: routes.duration` — **critical**: limits the response to only the duration field, which keeps requests on the Basic SKU ($5/1k) rather than Advanced ($10/1k)
+- `Content-Type: application/json`
+
+The API returns durations as protobuf duration strings (e.g., `"720s"` for 12 minutes). The response parser must strip the trailing `s` and parse the integer.
+
+#### Concurrency
+
+Travel time fetching is parallelized at two levels:
+1. **Per restaurant**: all four travel modes are fetched concurrently via `tokio::join!`
+2. **Across restaurants**: up to 10 restaurants are fetched concurrently via `futures::stream::buffer_unordered(10)`
+
+This means a list of 50 restaurants (~200 API calls) completes in roughly 20 sequential rounds rather than 200.
 
 We need travel times for multiple modes per restaurant:
 
@@ -157,6 +199,8 @@ CREATE TABLE travel_times (
 
 - **TTL**: Default 1 week (configurable via `--cache-ttl`).
 - **Invalidation**: Entries older than TTL are re-fetched on next run. The `--dry-run` flag uses stale cache without refreshing.
+- **Eviction**: Expired entries are deleted at startup (`evict_expired()`) to keep the database file small over time.
+- **Hashing**: Restaurant IDs use SHA-256 of `name + \x00 + address` (the null byte separator prevents collisions between e.g. name="ab"/address="c" and name="a"/address="bc"). Home IDs use SHA-256 of the home address string.
 - **Why SQLite**: Zero-config, single-file, great Rust support via `rusqlite`. No server process to manage.
 
 ## 7. Project Structure
@@ -192,7 +236,9 @@ resto-roulette/
 └── tests/
     ├── fixtures/
     │   ├── sample.geojson
-    │   └── sample.csv
+    │   ├── sample.csv
+    │   ├── sample_maps_export.csv
+    │   └── routes_response.json
     ├── parse_test.rs           # Input parsing integration tests
     ├── bucket_test.rs          # Bucketing logic tests
     └── picker_test.rs          # Selection + distribution tests
@@ -202,18 +248,22 @@ resto-roulette/
 
 | Crate | Purpose |
 |---|---|
-| `clap` | CLI argument parsing with derive macros |
+| `clap` | CLI argument parsing with derive macros (with `env` feature) |
 | `reqwest` | HTTP client for Google APIs (async, rustls) |
 | `serde` / `serde_json` | JSON serialization & GeoJSON parsing |
 | `csv` | CSV parsing |
 | `rusqlite` | SQLite cache (with `bundled` feature) |
 | `tokio` | Async runtime |
+| `futures` | Stream combinators for concurrent API fetching |
 | `rand` | Random selection from buckets |
 | `thiserror` | Ergonomic error types |
-| `sha2` | Cache key hashing |
+| `anyhow` | Top-level error handling in `main()` |
+| `sha2` / `hex` | Cache key hashing (SHA-256 → hex string) |
 | `chrono` | Timestamp handling for cache TTL |
 | `colored` | Terminal coloring for pretty output |
-| `tracing` | Structured logging |
+| `tracing` | Structured logging (enable with `RUST_LOG=debug`) |
+| `toml` | Config file parsing (`~/.resto-roulette/config.toml`) |
+| `dirs` | Cross-platform home directory resolution |
 
 ## 9. Error Handling Strategy
 
@@ -225,22 +275,33 @@ pub enum AppError {
     #[error("Failed to parse input file: {0}")]
     Parse(String),
 
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
     #[error("Google API error: {0}")]
     Api(#[from] reqwest::Error),
 
     #[error("Cache error: {0}")]
     Cache(#[from] rusqlite::Error),
 
-    #[error("No restaurants found in bucket: {bucket}")]
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    #[error("No restaurants found in {bucket} bucket")]
     EmptyBucket { bucket: String },
 
-    #[error("Missing API key. Set GOOGLE_MAPS_API_KEY env var.")]
+    #[error("Missing API key. Set GOOGLE_MAPS_API_KEY or pass --api-key.")]
     MissingApiKey,
+
+    #[error("Missing home address. Set RESTO_HOME, pass --home, or add to config.toml.")]
+    MissingHome,
 
     #[error("{0}")]
     Config(String),
 }
 ```
+
+`main.rs` uses `anyhow::Result` for the top-level return type, which wraps `AppError` and adds context via `.context()` for better error messages.
 
 When a bucket is empty, the tool prints a friendly message for that slot rather than failing the entire run. The other two recommendations still display.
 
@@ -271,9 +332,10 @@ Using `proptest`:
 ### Test Fixtures
 
 Checked into `tests/fixtures/`:
-- `sample.geojson` — 10 restaurants in GeoJSON format
-- `sample.csv` — same 10 restaurants as CSV
-- `routes_response.json` — recorded Google API response for snapshot testing
+- `sample.geojson` — 5 Montréal restaurants in GeoJSON format (includes one with `"geometry": null` to test null handling)
+- `sample.csv` — same 5 restaurants in simple `name,address` CSV format (includes a quoted address with comma for parser testing)
+- `sample_maps_export.csv` — 4 restaurants in Google Maps shared-list export format (`Title,Note,URL,Tags,Comment`)
+- `routes_response.json` — recorded Google Routes API response for snapshot testing (duration in `"720s"` protobuf format)
 
 ## 11. CI Pipeline
 
