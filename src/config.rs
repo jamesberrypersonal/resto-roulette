@@ -66,8 +66,8 @@ struct FileConfig {
 
 pub fn load(cli: Cli) -> Result<Config> {
     let file_cfg = match config_path() {
-        Some(path) if path.exists() => read_file_config(&path)?,
-        _ => FileConfig::default(),
+        Some(path) => read_file_config(&path)?,
+        None => FileConfig::default(),
     };
 
     let home = cli
@@ -111,6 +111,10 @@ fn config_path() -> Option<PathBuf> {
 }
 
 fn read_file_config(path: &Path) -> Result<FileConfig> {
-    let contents = std::fs::read_to_string(path)?;
-    toml::from_str(&contents).map_err(|e| AppError::Config(format!("invalid config.toml: {}", e)))
+    match std::fs::read_to_string(path) {
+        Ok(contents) => toml::from_str(&contents)
+            .map_err(|e| AppError::Config(format!("invalid config.toml: {}", e))),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(FileConfig::default()),
+        Err(e) => Err(AppError::Io(e)),
+    }
 }

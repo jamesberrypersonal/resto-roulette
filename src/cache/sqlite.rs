@@ -75,12 +75,12 @@ impl Cache {
                 }
             }
 
-            match mode_str.as_str() {
-                "walk" => times.walk_secs = Some(duration_secs),
-                "bike" => times.bike_secs = Some(duration_secs),
-                "transit" => times.transit_secs = Some(duration_secs),
-                "drive" => times.drive_secs = Some(duration_secs),
-                other => tracing::warn!("Unknown travel mode in cache: '{}'", other),
+            match TravelMode::from_db_str(&mode_str) {
+                Some(TravelMode::Walk) => times.walk_secs = Some(duration_secs),
+                Some(TravelMode::Bike) => times.bike_secs = Some(duration_secs),
+                Some(TravelMode::Transit) => times.transit_secs = Some(duration_secs),
+                Some(TravelMode::Drive) => times.drive_secs = Some(duration_secs),
+                None => tracing::warn!("Unknown travel mode in cache: '{}'", mode_str),
             }
         }
 

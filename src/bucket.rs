@@ -72,17 +72,17 @@ pub fn assign(restaurants: &[Restaurant], times: &HashMap<String, TravelTimes>) 
         };
 
         if let Some((bucket, best_secs, best_mode)) = classify(travel_times) {
-            let entry = BucketEntry {
+            let vec = match bucket {
+                Bucket::Near => &mut buckets.near,
+                Bucket::Mid => &mut buckets.mid,
+                Bucket::Far => &mut buckets.far,
+            };
+            vec.push(BucketEntry {
                 restaurant: restaurant.clone(),
-                bucket: bucket.clone(),
+                bucket,
                 best_secs,
                 best_mode,
-            };
-            match bucket {
-                Bucket::Near => buckets.near.push(entry),
-                Bucket::Mid => buckets.mid.push(entry),
-                Bucket::Far => buckets.far.push(entry),
-            }
+            });
         }
     }
 

@@ -98,6 +98,16 @@ impl TravelMode {
             TravelMode::Drive => "drive",
         }
     }
+
+    pub fn from_db_str(s: &str) -> Option<Self> {
+        match s {
+            "walk" => Some(TravelMode::Walk),
+            "bike" => Some(TravelMode::Bike),
+            "transit" => Some(TravelMode::Transit),
+            "drive" => Some(TravelMode::Drive),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

@@ -12,6 +12,8 @@ use super::models::{
 
 const ROUTES_API_URL: &str = "https://routes.googleapis.com/directions/v2:computeRoutes";
 const GEOCODING_API_URL: &str = "https://maps.googleapis.com/maps/api/geocode/json";
+const LANGUAGE_CODE: &str = "en-US";
+const UNITS: &str = "METRIC";
 
 pub struct RoutingClient {
     client: Client,
@@ -68,8 +70,8 @@ impl RoutingClient {
             travel_mode: mode,
             compute_alternative_routes: false,
             route_modifiers: RouteModifiers::default(),
-            language_code: "en-US".to_string(),
-            units: "METRIC".to_string(),
+            language_code: LANGUAGE_CODE.to_string(),
+            units: UNITS.to_string(),
         };
 
         let resp = self
