@@ -26,11 +26,7 @@ impl RoutingClient {
 
     /// Fetch travel times for all four modes between home and restaurant.
     /// Individual mode failures are non-fatal (logged as warnings, result in None).
-    pub async fn get_travel_times(
-        &self,
-        home: &str,
-        destination: &str,
-    ) -> Result<TravelTimes> {
+    pub async fn get_travel_times(&self, home: &str, destination: &str) -> Result<TravelTimes> {
         let (walk, bike, transit, drive) = tokio::join!(
             self.fetch_one_mode(home, destination, ApiTravelMode::Walk),
             self.fetch_one_mode(home, destination, ApiTravelMode::Bicycle),
@@ -90,7 +86,6 @@ impl RoutingClient {
 
         Ok(secs)
     }
-
 }
 
 fn flatten_result(result: Result<Option<u32>>, mode: TravelMode) -> Option<u32> {
