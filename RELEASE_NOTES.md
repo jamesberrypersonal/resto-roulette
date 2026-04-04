@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## v0.1.1
 
 - Upgraded dependencies
 - Updated config file to optionally include list path
