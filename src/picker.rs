@@ -23,14 +23,14 @@ pub fn pick<R: Rng>(buckets: &Buckets, rng: &mut R) -> Selection {
 
 /// Convenience wrapper using thread_rng for production use.
 pub fn pick_random(buckets: &Buckets) -> Selection {
-    pick(buckets, &mut rand::thread_rng())
+    pick(buckets, &mut rand::rng())
 }
 
 fn pick_one<R: Rng>(entries: &[BucketEntry], rng: &mut R) -> Option<BucketEntry> {
     if entries.is_empty() {
         return None;
     }
-    let idx = rng.gen_range(0..entries.len());
+    let idx = rng.random_range(0..entries.len());
     Some(entries[idx].clone())
 }
 
