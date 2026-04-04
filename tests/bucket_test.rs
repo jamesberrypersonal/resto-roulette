@@ -81,9 +81,15 @@ fn walk_in_near_range_wins_over_mid_for_same_restaurant() {
 }
 
 #[test]
-fn drive_does_not_qualify_for_near() {
-    // drive=100 — drive is only eligible for Far bucket
-    assert_eq!(single_bucket(None, None, None, Some(100)), (0, 0, 1));
+fn drive_under_30min_excluded_from_all_buckets() {
+    // drive=100 — drive is not eligible for Near/Mid, and too fast to qualify for Far
+    assert_eq!(single_bucket(None, None, None, Some(100)), (0, 0, 0));
+}
+
+#[test]
+fn drive_over_30min_qualifies_for_far() {
+    // drive=2100 (35 min) — above Mid floor, eligible for Far
+    assert_eq!(single_bucket(None, None, None, Some(2100)), (0, 0, 1));
 }
 
 #[test]

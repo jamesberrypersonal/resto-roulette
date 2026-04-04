@@ -116,13 +116,13 @@ fn classify(times: &TravelTimes) -> Option<(Bucket, u32, TravelMode)> {
         return Some((Bucket::Mid, secs, mode));
     }
 
-    // Far: bike, transit, or drive ≤ 60 min
+    // Far: bike, transit, or drive > 30 min and ≤ 60 min
     let far_candidates = [
         (times.bike_secs, TravelMode::Bike),
         (times.transit_secs, TravelMode::Transit),
         (times.drive_secs, TravelMode::Drive),
     ];
-    if let Some((secs, mode)) = best_within(&far_candidates, FAR_SECS) {
+    if let Some((secs, mode)) = best_within_range(&far_candidates, MID_SECS, FAR_SECS) {
         return Some((Bucket::Far, secs, mode));
     }
 
@@ -131,9 +131,23 @@ fn classify(times: &TravelTimes) -> Option<(Bucket, u32, TravelMode)> {
 
 /// Return the (duration, mode) pair with the minimum duration among candidates within the limit.
 fn best_within(candidates: &[(Option<u32>, TravelMode)], limit: u32) -> Option<(u32, TravelMode)> {
+    best_within_range(candidates, 0, limit)
+}
+
+/// Return the (duration, mode) pair with the minimum duration among candidates strictly above
+/// `floor` and at or below `limit`.
+fn best_within_range(
+    candidates: &[(Option<u32>, TravelMode)],
+    floor: u32,
+    limit: u32,
+) -> Option<(u32, TravelMode)> {
     candidates
         .iter()
-        .filter_map(|(secs_opt, mode)| secs_opt.filter(|&s| s <= limit).map(|s| (s, *mode)))
+        .filter_map(|(secs_opt, mode)| {
+            secs_opt
+                .filter(|&s| s > floor && s <= limit)
+                .map(|s| (s, *mode))
+        })
         .min_by_key(|(s, _)| *s)
 }
 
@@ -190,12 +204,19 @@ mod tests {
     }
 
     #[test]
-    fn drive_does_not_qualify_for_near_or_mid() {
-        // drive=100 — drive is not eligible for Near or Mid
+    fn drive_under_30min_is_excluded() {
+        // drive=100 — drive is not eligible for Near or Mid, and too fast for Far
         let result = classify(&times(None, None, None, Some(100)));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn drive_over_30min_qualifies_for_far() {
+        // drive=2100 (35 min) — above Mid floor, within Far ceiling
+        let result = classify(&times(None, None, None, Some(2100)));
         assert!(matches!(
             result,
-            Some((Bucket::Far, 100, TravelMode::Drive))
+            Some((Bucket::Far, 2100, TravelMode::Drive))
         ));
     }
 
