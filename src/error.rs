@@ -20,11 +20,14 @@ pub enum AppError {
     #[error("No restaurants found in {bucket} bucket")]
     EmptyBucket { bucket: String },
 
-    #[error("Missing API key. Set GOOGLE_MAPS_API_KEY or pass --api-key.")]
+    #[error("Missing API key. Set GOOGLE_MAPS_API_KEY, pass --api-key, or add to config.toml.")]
     MissingApiKey,
 
     #[error("Missing home address. Set RESTO_HOME, pass --home, or add to config.toml.")]
     MissingHome,
+
+    #[error("Missing path to restaurant list. Pass --list, or add to config.toml.")]
+    MissingListPath,
 
     #[error("{0}")]
     Config(String),

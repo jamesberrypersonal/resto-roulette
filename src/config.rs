@@ -62,6 +62,7 @@ pub struct Cli {
 #[derive(Debug, Default, Deserialize)]
 struct FileConfig {
     home: Option<String>,
+    list_path: Option>PathBuf>,
     api_key: Option<String>,
     cache_ttl_hours: Option<u64>,
     default_format: Option<String>,
@@ -74,6 +75,8 @@ pub fn load(cli: Cli) -> Result<Config> {
     };
 
     let home = cli.home.or(file_cfg.home).ok_or(AppError::MissingHome)?;
+
+    let list_path = cli.list.or(file_cfg.list_path).ok_or(AppError::MissingListPath)?;
 
     let api_key = cli
         .api_key
@@ -91,7 +94,7 @@ pub fn load(cli: Cli) -> Result<Config> {
     Ok(Config {
         home,
         api_key,
-        list_path: cli.list,
+        list_path,
         reroll: cli.reroll,
         format,
         cache_ttl_hours,
