@@ -8,13 +8,13 @@ You have a growing "want to try" restaurant list in Google Maps. When it's time 
 $ resto-roulette --list "Want to Go.json"
 
 🚶 Walk/Bike/Transit ≤15 min
-   → Nouveau Palais (281 Rue Bernard O, Montréal, QC)   ~10 min
+   → Nouveau Palais (281 Rue Bernard O, Montréal, QC)   ~10 min by walking
 
 🚲 Bike/Transit 15–30 min
-   → Hà (243 Rue De Bleury, Montréal, QC)   ~22 min
+   → Hà (243 Rue De Bleury, Montréal, QC)   ~22 min by transit
 
 🚗 Bike/Transit/Car 30–60 min
-   → Cabane à sucre Au Pied de Cochon (Saint-Benoît, QC)   ~47 min
+   → Cabane à sucre Au Pied de Cochon (Saint-Benoît, QC)   ~47 min by car
 
 Re-roll? [y/N]
 ```
@@ -101,27 +101,27 @@ Nouveau Palais,281 Rue Bernard O Montréal QC
 resto-roulette [OPTIONS]
 
 Options:
-  -H, --home <HOME>          Home address (env: RESTO_HOME)
-  -l, --list <LIST>          Path to restaurant list [default: saved_places.csv]
-  -r, --reroll               Interactive re-roll mode
-      --format <FORMAT>      Output format: pretty or json [default: pretty]
-      --cache-ttl <HOURS>    Hours to cache travel times [default: 168]
-      --dry-run              Use cached data only, no API calls
-      --api-key <API_KEY>    Google Maps API key (env: GOOGLE_MAPS_API_KEY)
-  -h, --help                 Print help
+  -H, --home <HOME>            Home address or lat,lng (env: RESTO_HOME)
+  -l, --list <LIST>            Path to exported list file (CSV or GeoJSON)
+  -o, --one-shot               Pick once and exit without prompting to re-roll
+      --format <FORMAT>        Output format: pretty or json
+      --cache-ttl <CACHE_TTL>  Hours to cache travel times (default: 168)
+      --dry-run                Show buckets without API calls (uses cache only)
+      --api-key <API_KEY>      Google Maps API key (env: GOOGLE_MAPS_API_KEY)
+  -h, --help                   Print help
 ```
 
 ### Examples
 
 ```bash
-# Basic usage
+# Basic usage (re-rolls by default — press y to get new picks)
 resto-roulette --list places.json
+
+# Pick once and exit (no re-roll prompt)
+resto-roulette --list places.json --one-shot
 
 # JSON output (for piping to other tools)
 resto-roulette --list places.json --format json
-
-# Re-roll mode (press y to get new picks)
-resto-roulette --list places.json --reroll
 
 # Dry run (no API calls, uses whatever is cached)
 resto-roulette --list places.json --dry-run
