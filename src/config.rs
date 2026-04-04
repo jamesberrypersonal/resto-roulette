@@ -38,9 +38,9 @@ pub struct Cli {
     #[arg(short, long)]
     pub list: Option<PathBuf>,
 
-    /// Interactive re-roll mode
+    /// Pick once and exit without prompting to re-roll
     #[arg(short, long, default_value_t = false)]
-    pub reroll: bool,
+    pub one_shot: bool,
 
     /// Output format: pretty or json
     #[arg(long)]
@@ -102,7 +102,7 @@ fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
         home,
         api_key,
         list_path,
-        reroll: cli.reroll,
+        reroll: !cli.one_shot,
         format,
         cache_ttl_hours,
         dry_run: cli.dry_run,
@@ -142,7 +142,7 @@ mod tests {
         Cli {
             home: Some("456 Oak Ave".into()),
             list: Some(PathBuf::from("places.csv")),
-            reroll: false,
+            one_shot: false,
             format: None,
             cache_ttl: 168,
             dry_run: false,
@@ -320,9 +320,15 @@ mod tests {
     }
 
     #[test]
-    fn resolve_reroll_flag() {
+    fn resolve_reroll_default() {
+        let cfg = resolve(full_cli(), FileConfig::default()).unwrap();
+        assert!(cfg.reroll);
+    }
+
+    #[test]
+    fn resolve_one_shot_flag() {
         let mut cli = full_cli();
-        cli.reroll = true;
-        assert!(resolve(cli, FileConfig::default()).unwrap().reroll);
+        cli.one_shot = true;
+        assert!(!resolve(cli, FileConfig::default()).unwrap().reroll);
     }
 }

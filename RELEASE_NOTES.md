@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Pretty output now shows the transport mode used for each time estimate (e.g. `~8 min by walking`)
+- Re-roll is now the default; use `--one-shot` / `-o` to pick once and exit
 
 ## v0.1.1
 
