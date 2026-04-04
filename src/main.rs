@@ -75,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
                 } else {
                     tracing::debug!("Fetching travel times for '{}'", restaurant.name);
                     let fetched = client
-                        .get_travel_times(home, &restaurant.address, restaurant.location)
+                        .get_travel_times(home, &restaurant.address)
                         .await
                         .unwrap_or_else(|e| {
                             tracing::warn!(

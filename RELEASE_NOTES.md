@@ -4,6 +4,8 @@
 
 - Pretty output now shows the transport mode used for each time estimate (e.g. `~8 min by walking`)
 - Re-roll is now the default; use `--one-shot` / `-o` to pick once and exit
+- Fixed bug where `--cache-ttl` CLI flag was incorrectly overridden by the config file value
+- Removed unused code (dead geocoding method, unused error variant)
 
 ## v0.1.1
 

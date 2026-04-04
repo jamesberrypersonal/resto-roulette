@@ -46,9 +46,9 @@ pub struct Cli {
     #[arg(long)]
     pub format: Option<String>,
 
-    /// Hours to cache travel times
-    #[arg(long = "cache-ttl", default_value_t = 168)]
-    pub cache_ttl: u64,
+    /// Hours to cache travel times (default: 168)
+    #[arg(long = "cache-ttl")]
+    pub cache_ttl: Option<u64>,
 
     /// Show buckets without API calls (uses cache only)
     #[arg(long, default_value_t = false)]
@@ -96,7 +96,7 @@ fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
         .unwrap_or_else(|| "pretty".into());
     let format = parse_format(&format_str)?;
 
-    let cache_ttl_hours = file_cfg.cache_ttl_hours.unwrap_or(cli.cache_ttl);
+    let cache_ttl_hours = cli.cache_ttl.or(file_cfg.cache_ttl_hours).unwrap_or(168);
 
     Ok(Config {
         home,
@@ -144,7 +144,7 @@ mod tests {
             list: Some(PathBuf::from("places.csv")),
             one_shot: false,
             format: None,
-            cache_ttl: 168,
+            cache_ttl: None,
             dry_run: false,
             api_key: Some("test-key".into()),
         }
@@ -295,7 +295,19 @@ mod tests {
     }
 
     #[test]
-    fn resolve_cache_ttl_file_overrides_cli() {
+    fn resolve_cache_ttl_cli_takes_precedence() {
+        let mut cli = full_cli();
+        cli.cache_ttl = Some(48);
+        let file_cfg = FileConfig {
+            cache_ttl_hours: Some(24),
+            ..FileConfig::default()
+        };
+        let cfg = resolve(cli, file_cfg).unwrap();
+        assert_eq!(cfg.cache_ttl_hours, 48);
+    }
+
+    #[test]
+    fn resolve_cache_ttl_file_fills_when_cli_absent() {
         let file_cfg = FileConfig {
             cache_ttl_hours: Some(24),
             ..FileConfig::default()
@@ -305,11 +317,9 @@ mod tests {
     }
 
     #[test]
-    fn resolve_cache_ttl_falls_back_to_cli() {
-        let mut cli = full_cli();
-        cli.cache_ttl = 48;
-        let cfg = resolve(cli, FileConfig::default()).unwrap();
-        assert_eq!(cfg.cache_ttl_hours, 48);
+    fn resolve_cache_ttl_default_when_neither_set() {
+        let cfg = resolve(full_cli(), FileConfig::default()).unwrap();
+        assert_eq!(cfg.cache_ttl_hours, 168);
     }
 
     #[test]

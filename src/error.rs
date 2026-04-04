@@ -17,9 +17,6 @@ pub enum AppError {
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
-    #[error("No restaurants found in {bucket} bucket")]
-    EmptyBucket { bucket: String },
-
     #[error("Missing API key. Set GOOGLE_MAPS_API_KEY, pass --api-key, or add to config.toml.")]
     MissingApiKey,
 

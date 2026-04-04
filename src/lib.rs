@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 pub struct Restaurant {
     pub name: String,
     pub address: String,
-    /// Populated from GeoJSON coordinates; absent for CSV input (geocoded lazily before routing).
+    /// Populated from GeoJSON coordinates; absent for CSV input.
     pub location: Option<LatLng>,
 }
 
