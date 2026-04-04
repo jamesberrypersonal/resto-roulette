@@ -26,7 +26,7 @@ jobs:
           - os: macos-latest
             suffix: macos-arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
 
@@ -63,7 +63,7 @@ jobs:
             target/release/resto-roulette-v${{ steps.version.outputs.version }}-${{ matrix.suffix }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: resto-roulette-v${{ steps.version.outputs.version }}-${{ matrix.suffix }}
           path: target/release/resto-roulette-v${{ steps.version.outputs.version }}-${{ matrix.suffix }}
@@ -73,7 +73,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
 
@@ -102,7 +102,7 @@ jobs:
           echo "$NOTES" > release_notes_current.md
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
