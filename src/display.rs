@@ -31,10 +31,11 @@ fn render_pretty(selection: &Selection) {
         match entry_opt {
             Some(entry) => {
                 let line = format!(
-                    "   → {} ({})   {}",
+                    "   → {} ({})   {} by {}",
                     entry.restaurant.name,
                     entry.restaurant.address,
                     format_duration(entry.best_secs),
+                    entry.best_mode.display_name(),
                 );
                 println!("{}", line);
             }

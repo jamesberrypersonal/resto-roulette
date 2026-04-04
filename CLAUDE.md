@@ -45,6 +45,10 @@ See `docs/initial-design-doc.md` for full detail.
 - **`rusqlite` with `bundled` feature**: Compiles SQLite from source for zero system dependencies.
 - **Shared lists**: Google Takeout only exports lists you own. Shared lists from other users must be exported via the Google Maps shared-list CSV export.
 
+## Release Notes
+
+User-facing changes are tracked in `RELEASE_NOTES.md` at the repo root. When adding a feature or fixing a bug, add a bullet under the `## Unreleased` section (create it at the top if it doesn't exist). Keep entries concise and user-facing in tone.
+
 ## Testing Approach
 
 - Unit tests live in each module under `#[cfg(test)]`.

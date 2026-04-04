@@ -1,5 +1,9 @@
 # Release Notes
 
+## Unreleased
+
+- Pretty output now shows the transport mode used for each time estimate (e.g. `~8 min by walking`)
+
 ## v0.1.1
 
 - Upgraded dependencies
