@@ -80,7 +80,10 @@ pub fn load(cli: Cli) -> Result<Config> {
 fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
     let home = cli.home.or(file_cfg.home).ok_or(AppError::MissingHome)?;
 
-    let list_path = cli.list.or(file_cfg.list_path).ok_or(AppError::MissingListPath)?;
+    let list_path = cli
+        .list
+        .or(file_cfg.list_path)
+        .ok_or(AppError::MissingListPath)?;
 
     let api_key = cli
         .api_key
@@ -167,7 +170,10 @@ mod tests {
 
     #[test]
     fn parse_format_unknown_returns_error() {
-        assert!(matches!(parse_format("csv").unwrap_err(), AppError::Config(_)));
+        assert!(matches!(
+            parse_format("csv").unwrap_err(),
+            AppError::Config(_)
+        ));
     }
 
     // --- read_file_config ---
