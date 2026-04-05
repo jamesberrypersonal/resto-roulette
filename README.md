@@ -118,7 +118,7 @@ Options:
 ### Examples
 
 ```bash
-# Basic usage (re-rolls by default — press y to get new picks)
+# Basic usage — launches interactive TUI (navigate with j/k, re-roll with r/R, accept with Enter)
 resto-roulette --list places.json
 
 # Only show restaurants that are currently open

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::io::Write as IoWrite;
 
 use anyhow::Context;
 use chrono::Utc;
@@ -10,10 +9,10 @@ use resto_roulette::{
     bucket,
     cache::sqlite::hash_home,
     cache::Cache,
-    config::{self, Cli},
+    config::{self, Cli, OutputFormat},
     display,
     error::AppError,
-    parse, picker,
+    parse, picker, tui,
     places::{self, PlacesClient},
     routing::RoutingClient,
 };
@@ -163,7 +162,19 @@ async fn main() -> anyhow::Result<()> {
             .filter_map(|(rid, opt)| opt.map(|d| (rid, d)))
             .collect()
     } else {
-        HashMap::new()
+        // No active enrichment flags, but still read cached place details so
+        // cuisine labels appear in the TUI for previously-enriched restaurants.
+        // dry_run=true: accept stale entries, make zero API calls.
+        restaurants
+            .iter()
+            .filter_map(|r| {
+                let rid = r.id();
+                cache
+                    .get_place(&rid, true)
+                    .unwrap_or(None)
+                    .map(|(details, _)| (rid, details))
+            })
+            .collect()
     };
 
     // Filter closed restaurants (only when --open-now)
@@ -295,22 +306,16 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let selection = picker::pick_random(&buckets);
-    display::render(&selection, cfg.format);
 
-    // Re-roll loop
-    if cfg.reroll {
-        loop {
-            print!("Re-roll? [y/N] ");
-            std::io::stdout().flush()?;
-            let mut input = String::new();
-            std::io::stdin().read_line(&mut input)?;
-            if input.trim().eq_ignore_ascii_case("y") {
-                let selection = picker::pick_random(&buckets);
-                display::render(&selection, cfg.format);
-            } else {
-                break;
-            }
-        }
+    use std::io::IsTerminal;
+    let use_tui = cfg.reroll
+        && cfg.format == OutputFormat::Pretty
+        && std::io::stdout().is_terminal();
+
+    if use_tui {
+        tui::run(&buckets, selection).context("TUI error")?;
+    } else {
+        display::render(&selection, cfg.format);
     }
 
     Ok(())

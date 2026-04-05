@@ -24,7 +24,7 @@ cargo doc --open       # browse generated docs
 
 See `docs/initial-design-doc.md` for full detail.
 
-- **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline: parse → enrich (lazy, Places API) → filter closed → filter by cuisine → fetch travel times (`buffer_unordered(10)`) → bucket → pick → display.
+- **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline: parse → enrich (lazy, Places API) → filter closed → filter by cuisine → fetch travel times (`buffer_unordered(10)`) → bucket → pick → TUI (or plain display for `--one-shot`, `--format json`, non-TTY).
 - **`src/config.rs`** — Resolves configuration precedence: `--flag` > env var > `~/.resto-roulette/config.toml`. Note: `--home` short flag is `-H` (not `-h`, which clap reserves for `--help`).
 - **`src/parse/`** — Three parser paths dispatched by file extension and CSV headers:
   - `geojson.rs` — Google Takeout GeoJSON (includes coordinates; coordinate order is `[lng, lat]` per GeoJSON spec — the parser swaps to lat/lng).
@@ -37,7 +37,8 @@ See `docs/initial-design-doc.md` for full detail.
 - **`src/routing/`** — HTTP client (`client.rs`) for Google Routes API. Queries all four travel modes (walk/bike/transit/drive) per restaurant in parallel via `tokio::join!`. The `X-Goog-FieldMask: routes.duration` header is required to stay on the Basic SKU. Response durations are protobuf strings (`"720s"`) requiring custom deserialization.
 - **`src/cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Has two tables: `travel_times` (key: SHA-256(name+address) + SHA-256(home) + mode, TTL: 1 week) and `place_details` (key: SHA-256(name+address), TTL: 30 days). Both tables are evicted at startup. `Cache::open` takes separate TTL parameters for each table.
 - **`src/bucket.rs`** — Assigns each restaurant to exactly one bucket (the nearest it qualifies for). Mode eligibility per bucket: Near (walk/bike/transit), Mid (bike/transit only), Far (bike/transit/drive). `BucketEntry` carries a `cuisines: Vec<String>` field populated from the cuisine map passed to `assign()`.
-- **`src/picker.rs`** — Random selection from each bucket; takes generic `R: Rng` for deterministic tests.
+- **`src/picker.rs`** — Random selection from each bucket; takes generic `R: Rng` for deterministic tests. `pick_one_random(candidates)` is the public convenience wrapper used by the TUI for per-bucket re-rolling.
+- **`src/tui/mod.rs`** — `ratatui`/`crossterm` interactive TUI. `run(buckets, initial_selection)` sets up raw mode and the alternate screen, then enters an event loop. Navigating with `↑↓`/`jk` moves between the three bucket slots; `r` re-rolls the selected slot via `picker::pick_one_random`; `R` re-rolls all; `Enter` accepts and prints with `display::render`; `q`/`Esc` quits silently. Terminal is always restored on exit, even on error. Uses `ratatui::backend::TestBackend` for headless render tests.
 - **`src/display.rs`** — `pretty` (colored terminal) and `json` output formatters. Pretty output shows cuisine inline when available (e.g. `→ Hà (Vietnamese · 243 Rue De Bleury)`); omits the address entirely when it equals the restaurant name (shared-list CSV format). JSON output includes a `cuisines` array on every entry.
 - **`src/error.rs`** — Unified `AppError` enum via `thiserror`. `main.rs` wraps it in `anyhow::Result` for context-rich error messages.
 
@@ -54,6 +55,8 @@ See `docs/initial-design-doc.md` for full detail.
 - **Places API same key**: `--open-now` and `--cuisine` use the same `GOOGLE_MAPS_API_KEY` credential as Routes. The user must enable **Places API (New)** in their Google Cloud project. A 403 surfaces a clear error message pointing to this.
 - **Cuisine pass-through**: Restaurants with no recognized cuisine type always pass through cuisine filters (`--cuisine` and `exclude_cuisines`). Only restaurants with a positively identified cuisine can be filtered out.
 - **Cuisine taxonomy**: `src/places/cuisine.rs` maps Google Places types to normalized lowercase display names. The taxonomy covers ~60 types observed in practice — extend `display_name()` there to add more.
+- **TUI launch condition**: the TUI activates when `cfg.reroll && cfg.format == Pretty && stdout.is_terminal()`. All three must be true — `--one-shot`, `--format json`, and piped output all bypass it and fall back to a single `display::render` call.
+- **Cuisine always read from cache**: even without `--open-now`/`--cuisine`, `main.rs` does a cache-only (`dry_run=true`) read of `place_details` so the TUI can show cuisine labels for restaurants enriched in previous runs. No API calls are made.
 
 ## Release Notes
 

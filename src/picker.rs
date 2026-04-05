@@ -26,6 +26,11 @@ pub fn pick_random(buckets: &Buckets) -> Selection {
     pick(buckets, &mut rand::rng())
 }
 
+/// Pick a single random entry from the given candidate list. Returns None if empty.
+pub fn pick_one_random(candidates: &[BucketEntry]) -> Option<BucketEntry> {
+    pick_one(candidates, &mut rand::rng())
+}
+
 fn pick_one<R: Rng>(entries: &[BucketEntry], rng: &mut R) -> Option<BucketEntry> {
     if entries.is_empty() {
         return None;
@@ -98,6 +103,22 @@ mod tests {
         assert!(selection.near.is_none());
         assert!(selection.mid.is_none());
         assert!(selection.far.is_none());
+    }
+
+    #[test]
+    fn pick_one_random_empty_returns_none() {
+        assert!(pick_one_random(&[]).is_none());
+    }
+
+    #[test]
+    fn pick_one_random_single_entry_always_returns_it() {
+        let e = entry("Only", Bucket::Near);
+        for _ in 0..20 {
+            assert_eq!(
+                pick_one_random(&[e.clone()]).unwrap().restaurant.name,
+                "Only"
+            );
+        }
     }
 
     #[test]

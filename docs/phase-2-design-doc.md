@@ -591,15 +591,19 @@ Builds on the Places API infrastructure from 2a to add cuisine display and filte
 - The taxonomy covers ~60 types observed in practice, significantly more than the 25 in the original design. Extended to cover `brewpub`, `bistro`, `diner`, `tapas_restaurant`, `coffee_shop`, and many more based on actual Places API responses.
 - Pretty output omits the address when it equals the restaurant name (shared-list CSV format), showing just `→ Name (Cuisine)` instead of `→ Name (Cuisine · Name)`.
 
-### Phase 2c: Enhanced Interactive Mode
+### Phase 2c: Enhanced Interactive Mode ✅ Implemented
 
 Replaces the text-based re-roll with a `ratatui` TUI.
 
-1. Add `ratatui` and `crossterm` dependencies.
-2. Create `src/tui/mod.rs` with app loop, layout, rendering, and input handling.
-3. Add `pick_one` to `src/picker.rs` for per-bucket re-rolling.
-4. Update `main.rs` to launch TUI when interactive, fall back to print for `--one-shot`, `--format json`, and non-TTY.
-5. Remove the old text-based re-roll loop from `main.rs`.
+1. ✅ Add `ratatui = "0.29"` and `crossterm = "0.28"` dependencies.
+2. ✅ Create `src/tui/mod.rs` with app loop, layout, rendering, and input handling.
+3. ✅ Add `pick_one_random` to `src/picker.rs` for per-bucket re-rolling (public convenience wrapper around the existing generic `pick_one`).
+4. ✅ Update `main.rs` to launch TUI when interactive, fall back to plain display for `--one-shot`, `--format json`, and non-TTY.
+5. ✅ Remove the old text-based re-roll loop from `main.rs`.
+
+**Implementation notes:**
+- `pick_one_random` returns `Option<BucketEntry>` (owned) rather than `Option<&BucketEntry>` as originally sketched — avoids lifetime complexity since `BucketEntry` is `Clone`.
+- The cached place details are always read from SQLite (zero API calls) even without enrichment flags active, so cuisine labels appear in the TUI for previously-enriched restaurants.
 
 ---
 

@@ -7,6 +7,7 @@ pub mod parse;
 pub mod picker;
 pub mod places;
 pub mod routing;
+pub mod tui;
 
 use serde::{Deserialize, Serialize};
 
