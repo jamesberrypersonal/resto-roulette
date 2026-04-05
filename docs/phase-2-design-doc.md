@@ -577,15 +577,19 @@ Introduces the shared Places API infrastructure and the `--open-now` feature.
 4. ✅ Add enrichment + open-now filtering step in `main.rs` (before travel-time fetching).
 5. ✅ Add `PlacesApi` error variant.
 
-### Phase 2b: Cuisine Awareness
+### Phase 2b: Cuisine Awareness ✅ Implemented
 
 Builds on the Places API infrastructure from 2a to add cuisine display and filtering.
 
-1. Add `src/places/cuisine.rs` with taxonomy mapping.
-2. Add `--cuisine` flag and `exclude_cuisines` config option.
-3. Add `cuisines` field to `BucketEntry`; update `bucket::assign` to accept cuisine data.
-4. Add cuisine filtering logic in the enrichment step.
-5. Update `display.rs` for cuisine in both pretty and JSON output.
+1. ✅ Add `src/places/cuisine.rs` with taxonomy mapping (~60 Google Places types).
+2. ✅ Add `--cuisine` flag and `exclude_cuisines` config option.
+3. ✅ Add `cuisines` field to `BucketEntry`; update `bucket::assign` to accept cuisine data.
+4. ✅ Add cuisine filtering logic in the enrichment step.
+5. ✅ Update `display.rs` for cuisine in both pretty and JSON output.
+
+**Implementation notes:**
+- The taxonomy covers ~60 types observed in practice, significantly more than the 25 in the original design. Extended to cover `brewpub`, `bistro`, `diner`, `tapas_restaurant`, `coffee_shop`, and many more based on actual Places API responses.
+- Pretty output omits the address when it equals the restaurant name (shared-list CSV format), showing just `→ Name (Cuisine)` instead of `→ Name (Cuisine · Name)`.
 
 ### Phase 2c: Enhanced Interactive Mode
 

@@ -36,7 +36,7 @@ fn single_bucket(
     let id = r.id();
     let mut map = HashMap::new();
     map.insert(id, times(walk, bike, transit, drive));
-    let b = assign(&[r], &map);
+    let b = assign(&[r], &map, &HashMap::new());
     (b.near.len(), b.mid.len(), b.far.len())
 }
 
@@ -113,7 +113,7 @@ fn multiple_restaurants_distributed_correctly() {
         times(Some(9999), Some(9999), Some(9999), Some(9999)),
     );
 
-    let buckets = assign(&[r_near, r_mid, r_far, r_excluded], &map);
+    let buckets = assign(&[r_near, r_mid, r_far, r_excluded], &map, &HashMap::new());
     assert_eq!(buckets.near.len(), 1);
     assert_eq!(buckets.mid.len(), 1);
     assert_eq!(buckets.far.len(), 1);

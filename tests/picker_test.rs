@@ -16,6 +16,7 @@ fn entry(name: &str, bucket: Bucket) -> BucketEntry {
         bucket,
         best_secs: 600,
         best_mode: TravelMode::Walk,
+        cuisines: vec![],
     }
 }
 

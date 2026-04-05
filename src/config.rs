@@ -23,6 +23,8 @@ pub struct Config {
     pub places_cache_ttl_hours: u64,
     pub dry_run: bool,
     pub open_now: bool,
+    pub cuisine: Vec<String>,
+    pub exclude_cuisines: Vec<String>,
 }
 
 /// Raw CLI arguments parsed by clap.
@@ -67,6 +69,10 @@ pub struct Cli {
     /// Hours to cache place details (default: 720)
     #[arg(long = "places-cache-ttl")]
     pub places_cache_ttl: Option<u64>,
+
+    /// Filter to specific cuisines, comma-separated (e.g. "japanese,korean")
+    #[arg(long, value_delimiter = ',')]
+    pub cuisine: Vec<String>,
 }
 
 /// Contents of ~/.resto-roulette/config.toml
@@ -79,6 +85,7 @@ struct FileConfig {
     places_cache_ttl_hours: Option<u64>,
     default_format: Option<String>,
     open_now: Option<bool>,
+    exclude_cuisines: Option<Vec<String>>,
 }
 
 pub fn load(cli: Cli) -> Result<Config> {
@@ -114,6 +121,8 @@ fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
         .or(file_cfg.places_cache_ttl_hours)
         .unwrap_or(720);
     let open_now = cli.open_now || file_cfg.open_now.unwrap_or(false);
+    let cuisine = cli.cuisine;
+    let exclude_cuisines = file_cfg.exclude_cuisines.unwrap_or_default();
 
     Ok(Config {
         home,
@@ -125,6 +134,8 @@ fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
         places_cache_ttl_hours,
         dry_run: cli.dry_run,
         open_now,
+        cuisine,
+        exclude_cuisines,
     })
 }
 
@@ -168,6 +179,7 @@ mod tests {
             api_key: Some("test-key".into()),
             open_now: false,
             places_cache_ttl: None,
+            cuisine: vec![],
         }
     }
 

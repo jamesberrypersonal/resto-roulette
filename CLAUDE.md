@@ -24,20 +24,21 @@ cargo doc --open       # browse generated docs
 
 See `docs/initial-design-doc.md` for full detail.
 
-- **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline: parse → enrich (lazy, Places API) → filter closed → fetch travel times (`buffer_unordered(10)`) → bucket → pick → display.
+- **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline: parse → enrich (lazy, Places API) → filter closed → filter by cuisine → fetch travel times (`buffer_unordered(10)`) → bucket → pick → display.
 - **`src/config.rs`** — Resolves configuration precedence: `--flag` > env var > `~/.resto-roulette/config.toml`. Note: `--home` short flag is `-H` (not `-h`, which clap reserves for `--help`).
 - **`src/parse/`** — Three parser paths dispatched by file extension and CSV headers:
   - `geojson.rs` — Google Takeout GeoJSON (includes coordinates; coordinate order is `[lng, lat]` per GeoJSON spec — the parser swaps to lat/lng).
   - `csv.rs` — Auto-detects two formats: simple `name,address` CSV and Google Maps shared-list export (`Title,Note,URL,Tags,Comment`). The shared-list format uses the place name as the routing address.
-- **`src/places/`** — Google Places API (New) integration. Only active when `--open-now` is set (lazy enrichment).
-  - `client.rs` — HTTP client for Text Search (first encounter, resolves name+address → place ID + hours) and Place Details (cheap refresh using cached place ID). `X-Goog-FieldMask` is set to Basic SKU fields only.
+- **`src/places/`** — Google Places API (New) integration. Only active when `--open-now` or `--cuisine` (or `exclude_cuisines`) is set (lazy enrichment).
+  - `client.rs` — HTTP client for Text Search (first encounter, resolves name+address → place ID + hours + types) and Place Details (cheap refresh using cached place ID). `X-Goog-FieldMask` is set to Basic SKU fields only.
   - `models.rs` — API response types (deserialization) and domain structs (`PlaceDetails`, `WeeklyHours`, `HoursPeriod`, `DayTime`) with serde for cache serialization.
   - `hours.rs` — `is_open_at(hours, utc_offset_minutes, now_utc)` function. Uses the restaurant's own UTC offset (not system timezone) for correctness when travelling. Handles midnight rollover and the Saturday→Sunday week boundary.
+  - `cuisine.rs` — `display_name(google_type)` maps Google Places types (e.g. `"vietnamese_restaurant"`) to normalized lowercase display names (e.g. `"vietnamese"`). `extract_cuisines(types)` extracts all recognized cuisines from a place's type list.
 - **`src/routing/`** — HTTP client (`client.rs`) for Google Routes API. Queries all four travel modes (walk/bike/transit/drive) per restaurant in parallel via `tokio::join!`. The `X-Goog-FieldMask: routes.duration` header is required to stay on the Basic SKU. Response durations are protobuf strings (`"720s"`) requiring custom deserialization.
 - **`src/cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Has two tables: `travel_times` (key: SHA-256(name+address) + SHA-256(home) + mode, TTL: 1 week) and `place_details` (key: SHA-256(name+address), TTL: 30 days). Both tables are evicted at startup. `Cache::open` takes separate TTL parameters for each table.
-- **`src/bucket.rs`** — Assigns each restaurant to exactly one bucket (the nearest it qualifies for). Mode eligibility per bucket: Near (walk/bike/transit), Mid (bike/transit only), Far (bike/transit/drive).
+- **`src/bucket.rs`** — Assigns each restaurant to exactly one bucket (the nearest it qualifies for). Mode eligibility per bucket: Near (walk/bike/transit), Mid (bike/transit only), Far (bike/transit/drive). `BucketEntry` carries a `cuisines: Vec<String>` field populated from the cuisine map passed to `assign()`.
 - **`src/picker.rs`** — Random selection from each bucket; takes generic `R: Rng` for deterministic tests.
-- **`src/display.rs`** — `pretty` (colored terminal) and `json` output formatters.
+- **`src/display.rs`** — `pretty` (colored terminal) and `json` output formatters. Pretty output shows cuisine inline when available (e.g. `→ Hà (Vietnamese · 243 Rue De Bleury)`); omits the address entirely when it equals the restaurant name (shared-list CSV format). JSON output includes a `cuisines` array on every entry.
 - **`src/error.rs`** — Unified `AppError` enum via `thiserror`. `main.rs` wraps it in `anyhow::Result` for context-rich error messages.
 
 ## Key Design Decisions
@@ -48,9 +49,11 @@ See `docs/initial-design-doc.md` for full detail.
 - **`--dry-run`**: Uses stale cache without any API calls.
 - **`rusqlite` with `bundled` feature**: Compiles SQLite from source for zero system dependencies.
 - **Shared lists**: Google Takeout only exports lists you own. Shared lists from other users must be exported via the Google Maps shared-list CSV export.
-- **Lazy Places enrichment**: The Places API is only called when `--open-now` is active. Without it, the pipeline is identical to v1 — no extra API calls, no extra cost.
+- **Lazy Places enrichment**: The Places API is only called when `--open-now`, `--cuisine`, or `exclude_cuisines` is active. Without any of these, the pipeline is identical to v1 — no extra API calls, no extra cost.
 - **Fail-open on Places API**: If a restaurant's place details can't be fetched (API failure, no hours in response, dry-run with no cache), the restaurant is kept — never silently dropped due to an enrichment failure.
-- **Places API same key**: `--open-now` uses the same `GOOGLE_MAPS_API_KEY` credential as Routes. The user must enable **Places API (New)** in their Google Cloud project. A 403 surfaces a clear error message pointing to this.
+- **Places API same key**: `--open-now` and `--cuisine` use the same `GOOGLE_MAPS_API_KEY` credential as Routes. The user must enable **Places API (New)** in their Google Cloud project. A 403 surfaces a clear error message pointing to this.
+- **Cuisine pass-through**: Restaurants with no recognized cuisine type always pass through cuisine filters (`--cuisine` and `exclude_cuisines`). Only restaurants with a positively identified cuisine can be filtered out.
+- **Cuisine taxonomy**: `src/places/cuisine.rs` maps Google Places types to normalized lowercase display names. The taxonomy covers ~60 types observed in practice — extend `display_name()` there to add more.
 
 ## Release Notes
 

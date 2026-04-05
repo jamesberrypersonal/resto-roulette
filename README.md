@@ -41,7 +41,7 @@ The binary is at `target/release/resto-roulette`.
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a project and enable the **Routes API**
-3. If you want to use `--open-now`, also enable the **Places API (New)**
+3. If you want to use `--open-now` or `--cuisine`, also enable the **Places API (New)**
 4. Go to **APIs & Services > Credentials** and create an API key
 
 ### 4. Configure
@@ -58,6 +58,7 @@ export RESTO_HOME="123 Rue Saint-Denis, Montréal, QC"
 ```toml
 api_key = "AIza..."
 home = "123 Rue Saint-Denis, Montréal, QC"
+exclude_cuisines = ["fast food", "pizza"]  # optional: always exclude these
 ```
 
 **CLI flags** (highest priority, overrides the above):
@@ -110,6 +111,7 @@ Options:
       --api-key <API_KEY>              Google Maps API key (env: GOOGLE_MAPS_API_KEY)
       --open-now                       Only recommend restaurants that are currently open
       --places-cache-ttl <HOURS>       Hours to cache place details (default: 720)
+      --cuisine <CUISINE>              Filter to specific cuisines, comma-separated (e.g. "japanese,korean")
   -h, --help                           Print help
 ```
 
@@ -121,6 +123,15 @@ resto-roulette --list places.json
 
 # Only show restaurants that are currently open
 resto-roulette --list places.json --open-now
+
+# Filter to a specific cuisine
+resto-roulette --list places.json --cuisine japanese
+
+# Filter to multiple cuisines
+resto-roulette --list places.json --cuisine "japanese,korean"
+
+# Combine: open now + specific cuisine
+resto-roulette --list places.json --open-now --cuisine vietnamese
 
 # Pick once and exit (no re-roll prompt)
 resto-roulette --list places.json --one-shot
@@ -138,8 +149,8 @@ RUST_LOG=debug resto-roulette --list places.json
 ## How it works
 
 1. **Parse** the input file (GeoJSON, simple CSV, or Google Maps export CSV)
-2. **Enrich** (only with `--open-now`) — fetches opening hours from the Google Places API and caches them for 30 days
-3. **Filter** closed restaurants (only with `--open-now`)
+2. **Enrich** (only with `--open-now` or `--cuisine`) — fetches opening hours and cuisine types from the Google Places API and caches them for 30 days
+3. **Filter** — closed restaurants (with `--open-now`) and/or cuisine mismatches (with `--cuisine` or `exclude_cuisines`)
 4. **Check cache** — travel times are stored in `~/.resto-roulette/cache.db` (SQLite)
 5. **Fetch** travel times from the Google Routes API for any cache misses (4 modes per restaurant, up to 10 restaurants concurrently)
 6. **Bucket** each restaurant into the nearest tier it qualifies for:
@@ -155,7 +166,7 @@ Restaurants too far away (>60 min by any mode) are silently excluded. Empty buck
 
 The Google Routes API has a free tier of 10,000 requests per month. A typical run with 50 restaurants makes ~200 API calls, and results are cached for 1 week by default. You're unlikely to exceed the free tier with normal personal use.
 
-`--open-now` adds a one-time cost of ~$0.03/restaurant (Google Places Text Search) to resolve opening hours. Results are cached for 30 days, so subsequent runs are free. See the [design doc](docs/phase-2-design-doc.md#7-api-cost-analysis) for detailed cost analysis.
+`--open-now` and `--cuisine` both use the Google Places API to enrich restaurant data, adding a one-time cost of ~$0.03/restaurant (Google Places Text Search) on first use. Results are cached for 30 days, so subsequent runs are free. See the [design doc](docs/phase-2-design-doc.md#7-api-cost-analysis) for detailed cost analysis.
 
 ## Development
 

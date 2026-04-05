@@ -47,6 +47,7 @@ pub struct BucketEntry {
     pub bucket: Bucket,
     pub best_secs: u32,
     pub best_mode: TravelMode,
+    pub cuisines: Vec<String>,
 }
 
 pub struct Buckets {
@@ -58,7 +59,11 @@ pub struct Buckets {
 /// Assign all restaurants to buckets given their travel times.
 /// Each restaurant appears in exactly one bucket (the nearest it qualifies for).
 /// Restaurants that don't qualify for any bucket are silently excluded.
-pub fn assign(restaurants: &[Restaurant], times: &HashMap<String, TravelTimes>) -> Buckets {
+pub fn assign(
+    restaurants: &[Restaurant],
+    times: &HashMap<String, TravelTimes>,
+    cuisine_map: &HashMap<String, Vec<String>>,
+) -> Buckets {
     let mut buckets = Buckets {
         near: Vec::new(),
         mid: Vec::new(),
@@ -82,6 +87,7 @@ pub fn assign(restaurants: &[Restaurant], times: &HashMap<String, TravelTimes>) 
                 bucket,
                 best_secs,
                 best_mode,
+                cuisines: cuisine_map.get(&id).cloned().unwrap_or_default(),
             });
         }
     }

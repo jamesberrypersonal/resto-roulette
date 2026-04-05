@@ -30,13 +30,29 @@ fn render_pretty(selection: &Selection) {
 
         match entry_opt {
             Some(entry) => {
-                let line = format!(
-                    "   → {} ({})   {} by {}",
-                    entry.restaurant.name,
-                    entry.restaurant.address,
-                    format_duration(entry.best_secs),
-                    entry.best_mode.display_name(),
-                );
+                let has_real_address = entry.restaurant.address != entry.restaurant.name;
+                let cuisine = entry.cuisines.first().map(|c| capitalize(c));
+                let parens = match (cuisine, has_real_address) {
+                    (Some(c), true) => Some(format!("{} · {}", c, entry.restaurant.address)),
+                    (Some(c), false) => Some(c),
+                    (None, true) => Some(entry.restaurant.address.clone()),
+                    (None, false) => None,
+                };
+                let line = match parens {
+                    Some(p) => format!(
+                        "   → {} ({})   {} by {}",
+                        entry.restaurant.name,
+                        p,
+                        format_duration(entry.best_secs),
+                        entry.best_mode.display_name(),
+                    ),
+                    None => format!(
+                        "   → {}   {} by {}",
+                        entry.restaurant.name,
+                        format_duration(entry.best_secs),
+                        entry.best_mode.display_name(),
+                    ),
+                };
                 println!("{}", line);
             }
             None => {
@@ -53,6 +69,7 @@ fn render_json(selection: &Selection) {
     struct JsonEntry<'a> {
         name: &'a str,
         address: &'a str,
+        cuisines: &'a [String],
         bucket: &'a str,
         best_mode: &'a str,
         best_secs: u32,
@@ -69,6 +86,7 @@ fn render_json(selection: &Selection) {
         JsonEntry {
             name: &entry.restaurant.name,
             address: &entry.restaurant.address,
+            cuisines: &entry.cuisines,
             bucket: entry.bucket.label(),
             best_mode: entry.best_mode.display_name(),
             best_secs: entry.best_secs,
@@ -85,6 +103,14 @@ fn render_json(selection: &Selection) {
         "{}",
         serde_json::to_string_pretty(&output).unwrap_or_default()
     );
+}
+
+fn capitalize(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
 }
 
 fn format_duration(secs: u32) -> String {
@@ -105,6 +131,23 @@ fn format_duration(secs: u32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bucket::Bucket;
+    use crate::routing::models::TravelMode;
+    use crate::Restaurant;
+
+    fn make_entry(name: &str, address: &str, cuisines: Vec<String>) -> BucketEntry {
+        BucketEntry {
+            restaurant: Restaurant {
+                name: name.into(),
+                address: address.into(),
+                location: None,
+            },
+            bucket: Bucket::Near,
+            best_secs: 720,
+            best_mode: TravelMode::Transit,
+            cuisines,
+        }
+    }
 
     #[test]
     fn format_duration_minutes() {
@@ -119,5 +162,32 @@ mod tests {
     #[test]
     fn format_duration_exact_hour() {
         assert_eq!(format_duration(3600), "~1 h");
+    }
+
+    #[test]
+    fn capitalize_lowercase_word() {
+        assert_eq!(capitalize("vietnamese"), "Vietnamese");
+    }
+
+    #[test]
+    fn capitalize_multi_word() {
+        assert_eq!(capitalize("fast food"), "Fast food");
+    }
+
+    #[test]
+    fn capitalize_empty_string() {
+        assert_eq!(capitalize(""), "");
+    }
+
+    #[test]
+    fn json_entry_includes_cuisines() {
+        let entry = make_entry("Hà", "243 Rue De Bleury", vec!["vietnamese".into()]);
+        assert_eq!(entry.cuisines, vec!["vietnamese"]);
+    }
+
+    #[test]
+    fn json_entry_empty_cuisines() {
+        let entry = make_entry("Resto", "123 Main St", vec![]);
+        assert!(entry.cuisines.is_empty());
     }
 }

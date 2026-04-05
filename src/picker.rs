@@ -53,6 +53,7 @@ mod tests {
             bucket,
             best_secs: 600,
             best_mode: TravelMode::Walk,
+            cuisines: vec![],
         }
     }
 

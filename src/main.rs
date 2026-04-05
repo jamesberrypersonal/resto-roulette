@@ -59,8 +59,10 @@ async fn main() -> anyhow::Result<()> {
     let home_id = hash_home(&cfg.home);
     let client = RoutingClient::new(cfg.api_key.clone()).context("failed to build HTTP client")?;
 
-    // Enrich with Places API (lazy: only when --open-now is active)
-    let place_details_map: HashMap<String, places::PlaceDetails> = if cfg.open_now {
+    // Enrich with Places API (lazy: only when --open-now, --cuisine, or exclude_cuisines is active)
+    let needs_enrichment =
+        cfg.open_now || !cfg.cuisine.is_empty() || !cfg.exclude_cuisines.is_empty();
+    let place_details_map: HashMap<String, places::PlaceDetails> = if needs_enrichment {
         let places_client =
             PlacesClient::new(cfg.api_key.clone()).context("failed to build Places API client")?;
 
@@ -197,6 +199,46 @@ async fn main() -> anyhow::Result<()> {
         restaurants
     };
 
+    // Build cuisine map from enriched place details
+    let cuisine_map: HashMap<String, Vec<String>> = place_details_map
+        .iter()
+        .map(|(rid, d)| (rid.clone(), places::extract_cuisines(&d.types)))
+        .collect();
+
+    // Filter by cuisine (only when --cuisine or exclude_cuisines is set)
+    let restaurants = if !cfg.cuisine.is_empty() || !cfg.exclude_cuisines.is_empty() {
+        let original_len = restaurants.len();
+        let filtered: Vec<_> = restaurants
+            .into_iter()
+            .filter(|r| {
+                let cuisines = cuisine_map.get(&r.id()).map(|v| v.as_slice()).unwrap_or(&[]);
+                if cuisines.is_empty() {
+                    return true; // no recognized cuisine = pass through
+                }
+                if !cfg.cuisine.is_empty() {
+                    cuisines.iter().any(|c| cfg.cuisine.contains(c))
+                } else {
+                    !cuisines.iter().any(|c| cfg.exclude_cuisines.contains(c))
+                }
+            })
+            .collect();
+        let skipped = original_len - filtered.len();
+        if skipped > 0 {
+            eprintln!(
+                "Skipped {} restaurant{} by cuisine filter.",
+                skipped,
+                if skipped == 1 { "" } else { "s" }
+            );
+        }
+        if filtered.is_empty() {
+            eprintln!("No restaurants matched the cuisine filter.");
+            return Ok(());
+        }
+        filtered
+    } else {
+        restaurants
+    };
+
     // Fetch travel times: check cache first, call API for misses (concurrently)
     let all_times: HashMap<String, _> = futures::stream::iter(restaurants.iter())
         .map(|restaurant| {
@@ -245,7 +287,7 @@ async fn main() -> anyhow::Result<()> {
         .await;
 
     // Bucket and pick
-    let buckets = bucket::assign(&restaurants, &all_times);
+    let buckets = bucket::assign(&restaurants, &all_times, &cuisine_map);
 
     if buckets.near.is_empty() && buckets.mid.is_empty() && buckets.far.is_empty() {
         eprintln!("No restaurants could be bucketed (try running without --dry-run to fetch travel times).");

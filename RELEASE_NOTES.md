@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Add `--open-now` flag to filter out currently-closed restaurants (requires Places API (New) enabled on your Google Cloud key)
+- Add `--cuisine` flag to filter recommendations by cuisine type (e.g. `--cuisine japanese` or `--cuisine "japanese,korean"`)
+- Add `exclude_cuisines` config option to permanently exclude cuisine types (e.g. `exclude_cuisines = ["fast food"]`)
+- Cuisine type is now shown inline in pretty output when available (e.g. `→ Hà (Vietnamese · 243 Rue De Bleury)`)
 
 ## v0.2.0
 
