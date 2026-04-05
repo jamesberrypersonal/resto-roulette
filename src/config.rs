@@ -20,7 +20,9 @@ pub struct Config {
     pub reroll: bool,
     pub format: OutputFormat,
     pub cache_ttl_hours: u64,
+    pub places_cache_ttl_hours: u64,
     pub dry_run: bool,
+    pub open_now: bool,
 }
 
 /// Raw CLI arguments parsed by clap.
@@ -57,6 +59,14 @@ pub struct Cli {
     /// Google Maps API key (env: GOOGLE_MAPS_API_KEY)
     #[arg(long, env = "GOOGLE_MAPS_API_KEY")]
     pub api_key: Option<String>,
+
+    /// Only recommend restaurants that are currently open
+    #[arg(long, default_value_t = false)]
+    pub open_now: bool,
+
+    /// Hours to cache place details (default: 720)
+    #[arg(long = "places-cache-ttl")]
+    pub places_cache_ttl: Option<u64>,
 }
 
 /// Contents of ~/.resto-roulette/config.toml
@@ -66,7 +76,9 @@ struct FileConfig {
     list_path: Option<PathBuf>,
     api_key: Option<String>,
     cache_ttl_hours: Option<u64>,
+    places_cache_ttl_hours: Option<u64>,
     default_format: Option<String>,
+    open_now: Option<bool>,
 }
 
 pub fn load(cli: Cli) -> Result<Config> {
@@ -97,6 +109,11 @@ fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
     let format = parse_format(&format_str)?;
 
     let cache_ttl_hours = cli.cache_ttl.or(file_cfg.cache_ttl_hours).unwrap_or(168);
+    let places_cache_ttl_hours = cli
+        .places_cache_ttl
+        .or(file_cfg.places_cache_ttl_hours)
+        .unwrap_or(720);
+    let open_now = cli.open_now || file_cfg.open_now.unwrap_or(false);
 
     Ok(Config {
         home,
@@ -105,7 +122,9 @@ fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
         reroll: !cli.one_shot,
         format,
         cache_ttl_hours,
+        places_cache_ttl_hours,
         dry_run: cli.dry_run,
+        open_now,
     })
 }
 
@@ -147,6 +166,8 @@ mod tests {
             cache_ttl: None,
             dry_run: false,
             api_key: Some("test-key".into()),
+            open_now: false,
+            places_cache_ttl: None,
         }
     }
 

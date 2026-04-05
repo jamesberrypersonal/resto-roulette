@@ -1,5 +1,9 @@
 # Release Notes
 
+## Unreleased
+
+- Add `--open-now` flag to filter out currently-closed restaurants (requires Places API (New) enabled on your Google Cloud key)
+
 ## v0.2.0
 
 - Pretty output now shows the transport mode used for each time estimate (e.g. `~8 min by walking`)

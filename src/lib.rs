@@ -5,6 +5,7 @@ pub mod display;
 pub mod error;
 pub mod parse;
 pub mod picker;
+pub mod places;
 pub mod routing;
 
 use serde::{Deserialize, Serialize};

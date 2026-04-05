@@ -567,15 +567,15 @@ Users of the new features must ensure their Google Cloud API key has the **Place
 
 The three features are implemented in order, each building on the previous:
 
-### Phase 2a: Time-of-Day Awareness
+### Phase 2a: Time-of-Day Awareness ✅ Implemented
 
 Introduces the shared Places API infrastructure and the `--open-now` feature.
 
-1. Create `src/places/` module with client, models, and hours logic.
-2. Add `place_details` table to the cache.
-3. Add `--open-now` flag and `open_now` config option.
-4. Add enrichment + open-now filtering step in `main.rs` (before travel-time fetching).
-5. Add `PlacesApi` error variant.
+1. ✅ Create `src/places/` module with client, models, and hours logic.
+2. ✅ Add `place_details` table to the cache.
+3. ✅ Add `--open-now` flag and `open_now` config option.
+4. ✅ Add enrichment + open-now filtering step in `main.rs` (before travel-time fetching).
+5. ✅ Add `PlacesApi` error variant.
 
 ### Phase 2b: Cuisine Awareness
 

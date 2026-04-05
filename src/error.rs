@@ -28,6 +28,9 @@ pub enum AppError {
 
     #[error("{0}")]
     Config(String),
+
+    #[error("Google Places API error: {0}\nHint: ensure the Places API (New) is enabled in your Google Cloud project.")]
+    PlacesApi(String),
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;

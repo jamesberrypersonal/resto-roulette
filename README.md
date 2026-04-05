@@ -41,8 +41,8 @@ The binary is at `target/release/resto-roulette`.
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a project and enable the **Routes API**
-3. Go to **APIs & Services > Credentials** and create an API key
-4. (Recommended) Restrict the key to only the Routes API
+3. If you want to use `--open-now`, also enable the **Places API (New)**
+4. Go to **APIs & Services > Credentials** and create an API key
 
 ### 4. Configure
 
@@ -101,14 +101,16 @@ Nouveau Palais,281 Rue Bernard O Montréal QC
 resto-roulette [OPTIONS]
 
 Options:
-  -H, --home <HOME>            Home address or lat,lng (env: RESTO_HOME)
-  -l, --list <LIST>            Path to exported list file (CSV or GeoJSON)
-  -o, --one-shot               Pick once and exit without prompting to re-roll
-      --format <FORMAT>        Output format: pretty or json
-      --cache-ttl <CACHE_TTL>  Hours to cache travel times (default: 168)
-      --dry-run                Show buckets without API calls (uses cache only)
-      --api-key <API_KEY>      Google Maps API key (env: GOOGLE_MAPS_API_KEY)
-  -h, --help                   Print help
+  -H, --home <HOME>                    Home address or lat,lng (env: RESTO_HOME)
+  -l, --list <LIST>                    Path to exported list file (CSV or GeoJSON)
+  -o, --one-shot                       Pick once and exit without prompting to re-roll
+      --format <FORMAT>                Output format: pretty or json
+      --cache-ttl <CACHE_TTL>          Hours to cache travel times (default: 168)
+      --dry-run                        Show buckets without API calls (uses cache only)
+      --api-key <API_KEY>              Google Maps API key (env: GOOGLE_MAPS_API_KEY)
+      --open-now                       Only recommend restaurants that are currently open
+      --places-cache-ttl <HOURS>       Hours to cache place details (default: 720)
+  -h, --help                           Print help
 ```
 
 ### Examples
@@ -116,6 +118,9 @@ Options:
 ```bash
 # Basic usage (re-rolls by default — press y to get new picks)
 resto-roulette --list places.json
+
+# Only show restaurants that are currently open
+resto-roulette --list places.json --open-now
 
 # Pick once and exit (no re-roll prompt)
 resto-roulette --list places.json --one-shot
@@ -133,20 +138,24 @@ RUST_LOG=debug resto-roulette --list places.json
 ## How it works
 
 1. **Parse** the input file (GeoJSON, simple CSV, or Google Maps export CSV)
-2. **Check cache** — travel times are stored in `~/.resto-roulette/cache.db` (SQLite)
-3. **Fetch** travel times from the Google Routes API for any cache misses (4 modes per restaurant, up to 10 restaurants concurrently)
-4. **Bucket** each restaurant into the nearest tier it qualifies for:
+2. **Enrich** (only with `--open-now`) — fetches opening hours from the Google Places API and caches them for 30 days
+3. **Filter** closed restaurants (only with `--open-now`)
+4. **Check cache** — travel times are stored in `~/.resto-roulette/cache.db` (SQLite)
+5. **Fetch** travel times from the Google Routes API for any cache misses (4 modes per restaurant, up to 10 restaurants concurrently)
+6. **Bucket** each restaurant into the nearest tier it qualifies for:
    - **Near** (≤15 min): walking, biking, or transit
    - **Mid** (15–30 min): biking or transit
    - **Far** (30–60 min): biking, transit, or driving
-5. **Pick** one random restaurant from each bucket
-6. **Display** the results
+7. **Pick** one random restaurant from each bucket
+8. **Display** the results
 
 Restaurants too far away (>60 min by any mode) are silently excluded. Empty buckets show a friendly message.
 
 ## Cost
 
-The Google Routes API has a free tier of 10,000 requests per month. A typical run with 50 restaurants makes ~200 API calls, and results are cached for 1 week by default. You're unlikely to exceed the free tier with normal personal use. See the [design doc](docs/initial-design-doc.md#14-api-cost-analysis) for detailed cost analysis.
+The Google Routes API has a free tier of 10,000 requests per month. A typical run with 50 restaurants makes ~200 API calls, and results are cached for 1 week by default. You're unlikely to exceed the free tier with normal personal use.
+
+`--open-now` adds a one-time cost of ~$0.03/restaurant (Google Places Text Search) to resolve opening hours. Results are cached for 30 days, so subsequent runs are free. See the [design doc](docs/phase-2-design-doc.md#7-api-cost-analysis) for detailed cost analysis.
 
 ## Development
 

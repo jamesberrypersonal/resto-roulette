@@ -24,13 +24,17 @@ cargo doc --open       # browse generated docs
 
 See `docs/initial-design-doc.md` for full detail.
 
-- **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline with concurrent API fetching (`buffer_unordered(10)`).
+- **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline: parse → enrich (lazy, Places API) → filter closed → fetch travel times (`buffer_unordered(10)`) → bucket → pick → display.
 - **`src/config.rs`** — Resolves configuration precedence: `--flag` > env var > `~/.resto-roulette/config.toml`. Note: `--home` short flag is `-H` (not `-h`, which clap reserves for `--help`).
 - **`src/parse/`** — Three parser paths dispatched by file extension and CSV headers:
   - `geojson.rs` — Google Takeout GeoJSON (includes coordinates; coordinate order is `[lng, lat]` per GeoJSON spec — the parser swaps to lat/lng).
   - `csv.rs` — Auto-detects two formats: simple `name,address` CSV and Google Maps shared-list export (`Title,Note,URL,Tags,Comment`). The shared-list format uses the place name as the routing address.
+- **`src/places/`** — Google Places API (New) integration. Only active when `--open-now` is set (lazy enrichment).
+  - `client.rs` — HTTP client for Text Search (first encounter, resolves name+address → place ID + hours) and Place Details (cheap refresh using cached place ID). `X-Goog-FieldMask` is set to Basic SKU fields only.
+  - `models.rs` — API response types (deserialization) and domain structs (`PlaceDetails`, `WeeklyHours`, `HoursPeriod`, `DayTime`) with serde for cache serialization.
+  - `hours.rs` — `is_open_at(hours, utc_offset_minutes, now_utc)` function. Uses the restaurant's own UTC offset (not system timezone) for correctness when travelling. Handles midnight rollover and the Saturday→Sunday week boundary.
 - **`src/routing/`** — HTTP client (`client.rs`) for Google Routes API. Queries all four travel modes (walk/bike/transit/drive) per restaurant in parallel via `tokio::join!`. The `X-Goog-FieldMask: routes.duration` header is required to stay on the Basic SKU. Response durations are protobuf strings (`"720s"`) requiring custom deserialization.
-- **`src/cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Cache key is SHA-256(name + `\x00` + address) + SHA-256(home address) + mode. Default TTL: 1 week. Expired entries are evicted at startup.
+- **`src/cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Has two tables: `travel_times` (key: SHA-256(name+address) + SHA-256(home) + mode, TTL: 1 week) and `place_details` (key: SHA-256(name+address), TTL: 30 days). Both tables are evicted at startup. `Cache::open` takes separate TTL parameters for each table.
 - **`src/bucket.rs`** — Assigns each restaurant to exactly one bucket (the nearest it qualifies for). Mode eligibility per bucket: Near (walk/bike/transit), Mid (bike/transit only), Far (bike/transit/drive).
 - **`src/picker.rs`** — Random selection from each bucket; takes generic `R: Rng` for deterministic tests.
 - **`src/display.rs`** — `pretty` (colored terminal) and `json` output formatters.
@@ -44,6 +48,9 @@ See `docs/initial-design-doc.md` for full detail.
 - **`--dry-run`**: Uses stale cache without any API calls.
 - **`rusqlite` with `bundled` feature**: Compiles SQLite from source for zero system dependencies.
 - **Shared lists**: Google Takeout only exports lists you own. Shared lists from other users must be exported via the Google Maps shared-list CSV export.
+- **Lazy Places enrichment**: The Places API is only called when `--open-now` is active. Without it, the pipeline is identical to v1 — no extra API calls, no extra cost.
+- **Fail-open on Places API**: If a restaurant's place details can't be fetched (API failure, no hours in response, dry-run with no cache), the restaurant is kept — never silently dropped due to an enrichment failure.
+- **Places API same key**: `--open-now` uses the same `GOOGLE_MAPS_API_KEY` credential as Routes. The user must enable **Places API (New)** in their Google Cloud project. A 403 surfaces a clear error message pointing to this.
 
 ## Release Notes
 
@@ -53,5 +60,5 @@ User-facing changes are tracked in `RELEASE_NOTES.md` at the repo root. When add
 
 - Unit tests live in each module under `#[cfg(test)]`.
 - Integration tests in `tests/` cover parsing, bucketing, and picker logic using fixture files.
-- Test fixtures (`tests/fixtures/`) include `sample.geojson`, `sample.csv`, `sample_maps_export.csv`, and `routes_response.json`.
+- Test fixtures (`tests/fixtures/`) include `sample.geojson`, `sample.csv`, `sample_maps_export.csv`, `routes_response.json`, `places_text_search_response.json`, and `places_details_response.json`.
 - Seed the RNG when testing the picker for deterministic results (`StdRng::seed_from_u64`).

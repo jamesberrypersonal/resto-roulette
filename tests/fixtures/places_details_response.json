@@ -1,0 +1,38 @@
+{
+  "types": [
+    "japanese_restaurant",
+    "restaurant",
+    "food",
+    "point_of_interest",
+    "establishment"
+  ],
+  "regularOpeningHours": {
+    "periods": [
+      {
+        "open": { "day": 1, "hour": 11, "minute": 30 },
+        "close": { "day": 1, "hour": 22, "minute": 0 }
+      },
+      {
+        "open": { "day": 2, "hour": 11, "minute": 30 },
+        "close": { "day": 2, "hour": 22, "minute": 0 }
+      },
+      {
+        "open": { "day": 3, "hour": 11, "minute": 30 },
+        "close": { "day": 3, "hour": 22, "minute": 0 }
+      },
+      {
+        "open": { "day": 4, "hour": 11, "minute": 30 },
+        "close": { "day": 4, "hour": 22, "minute": 0 }
+      },
+      {
+        "open": { "day": 5, "hour": 11, "minute": 30 },
+        "close": { "day": 5, "hour": 23, "minute": 0 }
+      },
+      {
+        "open": { "day": 6, "hour": 12, "minute": 0 },
+        "close": { "day": 6, "hour": 23, "minute": 0 }
+      }
+    ]
+  },
+  "utcOffsetMinutes": -300
+}

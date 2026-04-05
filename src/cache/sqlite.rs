@@ -3,18 +3,21 @@ use std::path::Path;
 use chrono::{DateTime, Duration, Utc};
 use hex;
 use rusqlite::{params, Connection};
+use serde_json;
 use sha2::{Digest, Sha256};
 
 use crate::error::Result;
+use crate::places::models::PlaceDetails;
 use crate::routing::models::{TravelMode, TravelTimes};
 
 pub struct Cache {
     conn: Connection,
     ttl: Duration,
+    places_ttl: Duration,
 }
 
 impl Cache {
-    pub fn open(db_path: &Path, ttl_hours: u64) -> Result<Self> {
+    pub fn open(db_path: &Path, ttl_hours: u64, places_ttl_hours: u64) -> Result<Self> {
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -28,12 +31,21 @@ impl Cache {
                 duration_secs INTEGER NOT NULL,
                 fetched_at    TEXT NOT NULL,
                 PRIMARY KEY (restaurant_id, home_id, mode)
+            );
+            CREATE TABLE IF NOT EXISTS place_details (
+                restaurant_id      TEXT PRIMARY KEY,
+                place_id           TEXT NOT NULL,
+                types_json         TEXT NOT NULL,
+                hours_json         TEXT,
+                utc_offset_minutes INTEGER,
+                fetched_at         TEXT NOT NULL
             );",
         )?;
 
         Ok(Self {
             conn,
             ttl: Duration::hours(ttl_hours as i64),
+            places_ttl: Duration::hours(places_ttl_hours as i64),
         })
     }
 
@@ -112,6 +124,104 @@ impl Cache {
         Ok(())
     }
 
+    /// Look up cached place details for a restaurant.
+    ///
+    /// Returns `Some((details, is_fresh))` on a hit:
+    /// - `is_fresh = true`  → entry is within TTL, use as-is.
+    /// - `is_fresh = false` → entry is stale; caller may refresh or use as fallback.
+    ///
+    /// Returns `None` on a cache miss.
+    ///
+    /// When `dry_run = true`, TTL is ignored and any cached entry is returned as fresh.
+    pub fn get_place(
+        &self,
+        restaurant_id: &str,
+        dry_run: bool,
+    ) -> Result<Option<(PlaceDetails, bool)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT place_id, types_json, hours_json, utc_offset_minutes, fetched_at
+             FROM place_details
+             WHERE restaurant_id = ?1",
+        )?;
+
+        let row = stmt.query_row(params![restaurant_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<i32>>(3)?,
+                row.get::<_, String>(4)?,
+            ))
+        });
+
+        match row {
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+            Ok((place_id, types_json, hours_json, utc_offset_minutes, fetched_at_str)) => {
+                let types: Vec<String> = serde_json::from_str(&types_json)?;
+                let hours = hours_json
+                    .as_deref()
+                    .map(serde_json::from_str)
+                    .transpose()?;
+
+                let details = PlaceDetails {
+                    place_id,
+                    types,
+                    hours,
+                    utc_offset_minutes,
+                };
+
+                let is_fresh = if dry_run {
+                    true
+                } else {
+                    let fetched_at = fetched_at_str
+                        .parse::<DateTime<Utc>>()
+                        .unwrap_or(DateTime::<Utc>::MIN_UTC);
+                    fetched_at >= Utc::now() - self.places_ttl
+                };
+
+                Ok(Some((details, is_fresh)))
+            }
+        }
+    }
+
+    /// Write place details for a restaurant (upsert).
+    pub fn put_place(&self, restaurant_id: &str, details: &PlaceDetails) -> Result<()> {
+        let types_json = serde_json::to_string(&details.types)?;
+        let hours_json = details
+            .hours
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?;
+        let now = Utc::now().to_rfc3339();
+
+        self.conn.execute(
+            "INSERT OR REPLACE INTO place_details
+             (restaurant_id, place_id, types_json, hours_json, utc_offset_minutes, fetched_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                restaurant_id,
+                details.place_id,
+                types_json,
+                hours_json,
+                details.utc_offset_minutes,
+                now
+            ],
+        )?;
+
+        Ok(())
+    }
+
+    /// Delete expired place_details entries. Call at startup to keep the file small.
+    pub fn evict_expired_places(&self) -> Result<usize> {
+        let cutoff = (Utc::now() - self.places_ttl).to_rfc3339();
+        let deleted = self.conn.execute(
+            "DELETE FROM place_details WHERE fetched_at < ?1",
+            params![cutoff],
+        )?;
+        Ok(deleted)
+    }
+
     /// Delete expired entries. Call at startup to keep the file small.
     pub fn evict_expired(&self) -> Result<usize> {
         let cutoff = (Utc::now() - self.ttl).to_rfc3339();
@@ -147,7 +257,7 @@ mod tests {
     fn temp_cache(ttl_hours: u64) -> (Cache, TempDir) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.db");
-        let cache = Cache::open(&path, ttl_hours).unwrap();
+        let cache = Cache::open(&path, ttl_hours, 720).unwrap();
         (cache, dir)
     }
 
