@@ -18,9 +18,8 @@ use ratatui::{
 
 use crate::bucket::{Bucket, BucketEntry, Buckets};
 use crate::config::OutputFormat;
-use crate::display;
+use crate::display::{self, format_duration, format_entry_parens};
 use crate::picker::{self, Selection};
-use crate::routing::models::TravelMode;
 
 struct App<'a> {
     buckets: &'a Buckets,
@@ -172,21 +171,18 @@ fn draw(f: &mut Frame, app: &App) {
         match entry_opt {
             Some(entry) => {
                 let marker = if is_selected { "  ► " } else { "    " };
-                let has_real_address = entry.restaurant.address != entry.restaurant.name;
-                let cuisine = entry.cuisines.first().map(|c| capitalize(c));
-                let parens = match (cuisine, has_real_address) {
-                    (Some(c), true) => Some(format!("{} · {}", c, entry.restaurant.address)),
-                    (Some(c), false) => Some(c),
-                    (None, true) => Some(entry.restaurant.address.clone()),
-                    (None, false) => None,
-                };
+                let parens = format_entry_parens(entry);
                 let name_line = match parens {
                     Some(p) => format!("{}{} ({})", marker, entry.restaurant.name, p),
                     None => format!("{}{}", marker, entry.restaurant.name),
                 };
                 lines.push(Line::styled(name_line, entry_style));
                 lines.push(Line::styled(
-                    format!("    {}", format_duration(entry.best_secs, &entry.best_mode)),
+                    format!(
+                        "    {} by {}",
+                        format_duration(entry.best_secs),
+                        entry.best_mode.display_name()
+                    ),
                     entry_style,
                 ));
             }
@@ -208,30 +204,6 @@ fn draw(f: &mut Frame, app: &App) {
         Style::default().fg(Color::DarkGray),
     );
     f.render_widget(Paragraph::new(footer), chunks[1]);
-}
-
-fn capitalize(s: &str) -> String {
-    let mut c = s.chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-    }
-}
-
-fn format_duration(secs: u32, mode: &TravelMode) -> String {
-    let mins = (secs + 30) / 60;
-    let time = if mins < 60 {
-        format!("~{} min", mins)
-    } else {
-        let h = mins / 60;
-        let m = mins % 60;
-        if m == 0 {
-            format!("~{} h", h)
-        } else {
-            format!("~{} h {} min", h, m)
-        }
-    };
-    format!("{} by {}", time, mode.display_name())
 }
 
 #[cfg(test)]

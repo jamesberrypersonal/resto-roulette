@@ -30,14 +30,7 @@ fn render_pretty(selection: &Selection) {
 
         match entry_opt {
             Some(entry) => {
-                let has_real_address = entry.restaurant.address != entry.restaurant.name;
-                let cuisine = entry.cuisines.first().map(|c| capitalize(c));
-                let parens = match (cuisine, has_real_address) {
-                    (Some(c), true) => Some(format!("{} · {}", c, entry.restaurant.address)),
-                    (Some(c), false) => Some(c),
-                    (None, true) => Some(entry.restaurant.address.clone()),
-                    (None, false) => None,
-                };
+                let parens = format_entry_parens(entry);
                 let line = match parens {
                     Some(p) => format!(
                         "   → {} ({})   {} by {}",
@@ -105,7 +98,20 @@ fn render_json(selection: &Selection) {
     );
 }
 
-fn capitalize(s: &str) -> String {
+/// Build the parenthetical label for a bucket entry: "Cuisine · Address", "Cuisine",
+/// "Address", or None when there's nothing useful to show.
+pub(crate) fn format_entry_parens(entry: &BucketEntry) -> Option<String> {
+    let has_real_address = entry.restaurant.address != entry.restaurant.name;
+    let cuisine = entry.cuisines.first().map(|c| capitalize(c));
+    match (cuisine, has_real_address) {
+        (Some(c), true) => Some(format!("{} · {}", c, entry.restaurant.address)),
+        (Some(c), false) => Some(c),
+        (None, true) => Some(entry.restaurant.address.clone()),
+        (None, false) => None,
+    }
+}
+
+pub(crate) fn capitalize(s: &str) -> String {
     let mut c = s.chars();
     match c.next() {
         None => String::new(),
@@ -113,7 +119,7 @@ fn capitalize(s: &str) -> String {
     }
 }
 
-fn format_duration(secs: u32) -> String {
+pub(crate) fn format_duration(secs: u32) -> String {
     let mins = (secs + 30) / 60; // round to nearest minute
     if mins < 60 {
         format!("~{} min", mins)
