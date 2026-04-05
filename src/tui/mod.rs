@@ -264,7 +264,11 @@ mod tests {
             mid: vec![],
             far: vec![],
         };
-        let initial = Selection { near: None, mid: None, far: None };
+        let initial = Selection {
+            near: None,
+            mid: None,
+            far: None,
+        };
         let app = App::new(&buckets, initial);
 
         let backend = TestBackend::new(80, 24);

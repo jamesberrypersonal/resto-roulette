@@ -12,9 +12,10 @@ use resto_roulette::{
     config::{self, Cli, OutputFormat},
     display,
     error::AppError,
-    parse, picker, tui,
+    parse, picker,
     places::{self, PlacesClient},
     routing::RoutingClient,
+    tui,
 };
 
 #[tokio::main]
@@ -222,7 +223,10 @@ async fn main() -> anyhow::Result<()> {
         let filtered: Vec<_> = restaurants
             .into_iter()
             .filter(|r| {
-                let cuisines = cuisine_map.get(&r.id()).map(|v| v.as_slice()).unwrap_or(&[]);
+                let cuisines = cuisine_map
+                    .get(&r.id())
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]);
                 if cuisines.is_empty() {
                     return true; // no recognized cuisine = pass through
                 }
@@ -308,9 +312,8 @@ async fn main() -> anyhow::Result<()> {
     let selection = picker::pick_random(&buckets);
 
     use std::io::IsTerminal;
-    let use_tui = cfg.reroll
-        && cfg.format == OutputFormat::Pretty
-        && std::io::stdout().is_terminal();
+    let use_tui =
+        cfg.reroll && cfg.format == OutputFormat::Pretty && std::io::stdout().is_terminal();
 
     if use_tui {
         tui::run(&buckets, selection).context("TUI error")?;
