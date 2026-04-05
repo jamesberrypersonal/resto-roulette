@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## v0.3.0
 
 - Replace text re-roll prompt with an interactive TUI: navigate buckets with `↑↓`/`jk`, re-roll a single slot with `r`, re-roll all with `R`, accept with `Enter`, quit with `q`. Automatically falls back to single-pick output when using `--one-shot`, `--format json`, or piping.
 - Add `--open-now` flag to filter out currently-closed restaurants (requires Places API (New) enabled on your Google Cloud key)
