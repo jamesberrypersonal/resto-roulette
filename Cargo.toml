@@ -1,6 +1,6 @@
 [package]
 name = "resto-roulette"
-version = "0.3.0"
+version = "1.0.0"
 edition = "2021"
 description = "Random restaurant picker from your Google Maps saved list, bucketed by travel time"
 license = "MIT"
