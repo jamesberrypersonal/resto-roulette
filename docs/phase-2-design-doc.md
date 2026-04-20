@@ -445,12 +445,15 @@ pub fn pick_one(candidates: &[BucketEntry]) -> Option<&BucketEntry>
 
 The TUI calls `pick_one` on the relevant bucket when the user presses `r`.
 
-### Future TUI Enhancements
+### Future TUI Enhancements ✅ Implemented
 
-These are out of scope for phase 2 but worth noting for future phases:
+- **Full browsable TUI**: press `Tab`/`l`/`→` in the slot view to open a scrollable candidate list for the selected bucket (`src/tui/browse_view.rs`). `Enter` assigns the pick; `Esc` cancels.
+- **TUI explorer mode**: press `e` or use `--explore` to launch a full-screen browser organized by bucket tab (`src/tui/explorer_view.rs`). Features live search (`/`), sort cycling (`s`: Name→Time→Cuisine), and a detail panel. `Enter` picks and returns to the slot view.
 
-- **Full browsable TUI**: scroll through all candidates in each bucket before confirming a pick, rather than relying on random selection.
-- **TUI explorer mode**: a full-screen restaurant browser organized by bucket, with search, sorting, and detail panels — essentially turning the tool into an interactive restaurant explorer.
+**Implementation notes:**
+- The TUI was refactored from a single `mod.rs` into submodules: `app.rs` (state model), `slots_view.rs`, `browse_view.rs`, `explorer_view.rs`, `widgets.rs`.
+- `run()` signature changed to `run(buckets, initial, explore: bool)`. The `explore` flag bypasses the slot view and launches directly into the explorer.
+- When searching in explorer mode, all printable keys append to the query; navigation uses arrow keys only (`j`/`k` type into the query, not navigate).
 
 ---
 
@@ -604,6 +607,7 @@ Replaces the text-based re-roll with a `ratatui` TUI.
 **Implementation notes:**
 - `pick_one_random` returns `Option<BucketEntry>` (owned) rather than `Option<&BucketEntry>` as originally sketched — avoids lifetime complexity since `BucketEntry` is `Clone`.
 - The cached place details are always read from SQLite (zero API calls) even without enrichment flags active, so cuisine labels appear in the TUI for previously-enriched restaurants.
+- `tui/mod.rs` was later refactored into submodules when the Future TUI Enhancements were implemented (see section above).
 
 ---
 

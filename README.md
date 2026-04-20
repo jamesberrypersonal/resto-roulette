@@ -7,16 +7,22 @@ You have a growing "want to try" restaurant list in Google Maps. When it's time 
 ```
 $ resto-roulette --list "Want to Go.json"
 
-🚶 Walk/Bike/Transit ≤15 min
-   → Nouveau Palais (281 Rue Bernard O, Montréal, QC)   ~10 min by walking
-
-🚲 Bike/Transit 15–30 min
-   → Hà (243 Rue De Bleury, Montréal, QC)   ~22 min by transit
-
-🚗 Bike/Transit/Car 30–60 min
-   → Cabane à sucre Au Pied de Cochon (Saint-Benoît, QC)   ~47 min by car
-
-Re-roll? [y/N]
+┌─ resto-roulette ─────────────────────────────────────────────┐
+│                                                              │
+│  🚶 Walk/Bike/Transit ≤15 min                               │
+│  ► Nouveau Palais (Diner · 281 Rue Bernard O)                │
+│    ~10 min by walking                                        │
+│                                                              │
+│  🚲 Bike/Transit 15–30 min                                  │
+│  ► Hà (Vietnamese · 243 Rue De Bleury)                       │
+│    ~22 min by transit                                        │
+│                                                              │
+│  🚗 Bike/Transit/Car 30–60 min                              │
+│  ► Cabane à sucre Au Pied de Cochon (~47 min by car)         │
+│                                                              │
+│  ↑↓/jk Navigate  r Re-roll slot  R Re-roll all              │
+│  Tab Browse  e Explore  Enter Accept  q Quit                 │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ## Setup
@@ -112,14 +118,21 @@ Options:
       --open-now                       Only recommend restaurants that are currently open
       --places-cache-ttl <HOURS>       Hours to cache place details (default: 720)
       --cuisine <CUISINE>              Filter to specific cuisines, comma-separated (e.g. "japanese,korean")
+      --explore                        Launch directly into the full-screen restaurant explorer
   -h, --help                           Print help
 ```
 
 ### Examples
 
 ```bash
-# Basic usage — launches interactive TUI (navigate with j/k, re-roll with r/R, accept with Enter)
+# Basic usage — launches interactive TUI
+# Navigate: j/k or ↑↓   Re-roll slot: r   Re-roll all: R   Accept: Enter   Quit: q
+# Browse all candidates for a bucket: Tab (or l/→)
+# Full-screen explorer with search and sort: e (or --explore flag)
 resto-roulette --list places.json
+
+# Launch directly into the restaurant explorer (browse, search, sort all candidates)
+resto-roulette --list places.json --explore
 
 # Only show restaurants that are currently open
 resto-roulette --list places.json --open-now

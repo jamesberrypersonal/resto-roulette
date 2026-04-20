@@ -312,11 +312,12 @@ async fn main() -> anyhow::Result<()> {
     let selection = picker::pick_random(&buckets);
 
     use std::io::IsTerminal;
-    let use_tui =
-        cfg.reroll && cfg.format == OutputFormat::Pretty && std::io::stdout().is_terminal();
+    let use_tui = std::io::stdout().is_terminal()
+        && cfg.format == OutputFormat::Pretty
+        && (cfg.explore || cfg.reroll);
 
     if use_tui {
-        tui::run(&buckets, selection).context("TUI error")?;
+        tui::run(&buckets, selection, cfg.explore).context("TUI error")?;
     } else {
         display::render(&selection, cfg.format);
     }

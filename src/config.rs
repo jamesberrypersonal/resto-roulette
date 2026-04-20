@@ -25,6 +25,7 @@ pub struct Config {
     pub open_now: bool,
     pub cuisine: Vec<String>,
     pub exclude_cuisines: Vec<String>,
+    pub explore: bool,
 }
 
 /// Raw CLI arguments parsed by clap.
@@ -73,6 +74,10 @@ pub struct Cli {
     /// Filter to specific cuisines, comma-separated (e.g. "japanese,korean")
     #[arg(long, value_delimiter = ',')]
     pub cuisine: Vec<String>,
+
+    /// Launch directly into the full-screen restaurant explorer
+    #[arg(long, default_value_t = false)]
+    pub explore: bool,
 }
 
 /// Contents of ~/.resto-roulette/config.toml
@@ -136,6 +141,7 @@ fn resolve(cli: Cli, file_cfg: FileConfig) -> Result<Config> {
         open_now,
         cuisine,
         exclude_cuisines,
+        explore: cli.explore,
     })
 }
 
@@ -180,6 +186,7 @@ mod tests {
             open_now: false,
             places_cache_ttl: None,
             cuisine: vec![],
+            explore: false,
         }
     }
 
