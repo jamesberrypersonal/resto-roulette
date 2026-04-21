@@ -1,4 +1,6 @@
-# Restaurant Roulette — Phase 3 Design Document: Automated List Ingestion
+# Design Exploration: Automated List Ingestion
+
+> **Note:** This is an exploratory document examining potential approaches to automating restaurant list ingestion. It is not a committed roadmap item — implementation timeline and scope are undecided.
 
 ## Problem
 
