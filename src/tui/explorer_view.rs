@@ -43,14 +43,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
     // --- Bucket tabs ---
     let tab_titles = [Bucket::Near, Bucket::Mid, Bucket::Far]
         .iter()
-        .map(|b| {
-            format!(
-                " {} {} {} ",
-                b.emoji(),
-                b.mode_description(),
-                b.label()
-            )
-        })
+        .map(|b| format!(" {} {} {} ", b.emoji(), b.mode_description(), b.label()))
         .collect::<Vec<_>>();
     let tabs = Tabs::new(tab_titles)
         .select(active_bucket)
@@ -77,10 +70,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         Style::default().fg(Color::DarkGray)
     };
-    f.render_widget(
-        Paragraph::new(Line::styled(bar, search_style)),
-        sections[1],
-    );
+    f.render_widget(Paragraph::new(Line::styled(bar, search_style)), sections[1]);
 
     // --- Main content: candidate list | detail panel ---
     let content_chunks = Layout::default()
@@ -123,9 +113,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         format!(" Candidates ({}) ", entries.len())
     };
-    let list_block = Block::default()
-        .title(list_title)
-        .borders(Borders::ALL);
+    let list_block = Block::default().title(list_title).borders(Borders::ALL);
     let list_inner = list_block.inner(content_chunks[0]);
     f.render_widget(list_block, content_chunks[0]);
 
@@ -143,8 +131,8 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
             list_inner,
         );
     } else {
-        let list = List::new(list_items)
-            .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+        let list =
+            List::new(list_items).highlight_style(Style::default().add_modifier(Modifier::BOLD));
         if let Mode::Explorer(ref mut state) = app.mode {
             f.render_stateful_widget(list, list_inner, &mut state.list_state);
         }
@@ -225,7 +213,11 @@ fn build_detail_lines(
         Line::from(vec![
             Span::styled("  Bucket:  ".to_string(), label_style),
             Span::styled(
-                format!("{} ({})", entry.bucket.mode_description(), entry.bucket.label()),
+                format!(
+                    "{} ({})",
+                    entry.bucket.mode_description(),
+                    entry.bucket.label()
+                ),
                 value_style,
             ),
         ]),
@@ -393,8 +385,8 @@ fn switch_explorer_bucket(app: &mut App, new_bucket: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::app::SortOrder;
+    use super::*;
     use crate::bucket::{Bucket, BucketEntry, Buckets};
     use crate::picker::Selection;
     use crate::routing::models::TravelMode;

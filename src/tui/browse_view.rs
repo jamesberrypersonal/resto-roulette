@@ -53,15 +53,20 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
             };
             ListItem::new(vec![
                 entry_name_line(entry, marker, style),
-                entry_detail_line(entry, Style::default().fg(if is_sel { Color::Green } else { Color::DarkGray })),
+                entry_detail_line(
+                    entry,
+                    Style::default().fg(if is_sel {
+                        Color::Green
+                    } else {
+                        Color::DarkGray
+                    }),
+                ),
                 Line::raw(""),
             ])
         })
         .collect();
 
-    let outer_block = Block::default()
-        .title(title)
-        .borders(Borders::ALL);
+    let outer_block = Block::default().title(title).borders(Borders::ALL);
     let inner = outer_block.inner(area);
     f.render_widget(outer_block, area);
 
@@ -77,8 +82,7 @@ pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
         ));
         f.render_widget(empty, chunks[0]);
     } else {
-        let list = List::new(items)
-            .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+        let list = List::new(items).highlight_style(Style::default().add_modifier(Modifier::BOLD));
 
         if let Mode::Browse(ref mut state) = app.mode {
             f.render_stateful_widget(list, chunks[0], &mut state.list_state);
@@ -160,7 +164,7 @@ mod tests {
         }
     }
 
-#[test]
+    #[test]
     fn browse_draw_does_not_panic() {
         let buckets: &'static Buckets = Box::leak(Box::new(Buckets {
             near: vec![make_entry("Hà"), make_entry("Nouveau Palais")],

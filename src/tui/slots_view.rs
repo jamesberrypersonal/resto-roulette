@@ -111,11 +111,7 @@ pub fn handle_key(app: &mut App, key: KeyCode) -> Action {
             };
             let initial_cursor = app.slots[bucket_idx]
                 .as_ref()
-                .and_then(|pick| {
-                    entries
-                        .iter()
-                        .position(|e| e.restaurant == pick.restaurant)
-                })
+                .and_then(|pick| entries.iter().position(|e| e.restaurant == pick.restaurant))
                 .unwrap_or(0);
             Action::SwitchToBrowse(BrowseState::new(bucket_idx, initial_cursor))
         }
@@ -260,7 +256,10 @@ mod tests {
             far: None,
         };
         let mut app = App::new(&buckets, initial);
-        assert!(matches!(handle_key(&mut app, KeyCode::Char('q')), Action::Quit));
+        assert!(matches!(
+            handle_key(&mut app, KeyCode::Char('q')),
+            Action::Quit
+        ));
     }
 
     #[test]
@@ -272,6 +271,9 @@ mod tests {
             far: None,
         };
         let mut app = App::new(&buckets, initial);
-        assert!(matches!(handle_key(&mut app, KeyCode::Enter), Action::Accept));
+        assert!(matches!(
+            handle_key(&mut app, KeyCode::Enter),
+            Action::Accept
+        ));
     }
 }
