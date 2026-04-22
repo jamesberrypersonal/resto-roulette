@@ -1,9 +1,10 @@
 # Release Notes
 
-## Unreleased
+## v1.1.0
 
 - Add per-bucket candidate browsing: press `Tab`/`l`/`→` in the TUI to scroll through all restaurants in the selected bucket and pick one manually
 - Add full-screen explorer mode (`--explore` flag, or press `e` in the TUI): browse all buckets with search (press `/`) and sort cycling (press `s`: Name → Time → Cuisine), with a detail panel for the highlighted restaurant
+- Dependency updates
 
 ## v1.0.0
 
