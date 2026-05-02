@@ -179,7 +179,7 @@ Restaurants too far away (>60 min by any mode) are silently excluded. Empty buck
 
 The Google Routes API has a free tier of 10,000 requests per month. A typical run with 50 restaurants makes ~200 API calls, and results are cached for 1 week by default. You're unlikely to exceed the free tier with normal personal use.
 
-`--open-now` and `--cuisine` both use the Google Places API to enrich restaurant data, adding a one-time cost of ~$0.03/restaurant (Google Places Text Search) on first use. Results are cached for 30 days, so subsequent runs are free. See the [design doc](docs/phase-2-design-doc.md#7-api-cost-analysis) for detailed cost analysis.
+`--open-now` and `--cuisine` both use the Google Places API to enrich restaurant data, adding a one-time cost of ~$0.03/restaurant (Google Places Text Search) on first use. Results are cached for 30 days, so subsequent runs are free. See the [design doc](docs/phase-2-design-doc-places-tui.md#7-api-cost-analysis) for detailed cost analysis.
 
 ## Development
 

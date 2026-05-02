@@ -460,7 +460,7 @@ None of this changes the core crate's API — the core stays single-tenant by ac
 | `tests/` | **Move** | Existing fixture-based integration tests follow their modules into `crates/resto-roulette-core/tests/`. |
 | `README.md` | **Modify** | Update install instructions; add server quick-start section. |
 | `RELEASE_NOTES.md` | **Modify** | `Unreleased` entries. |
-| `docs/server-exploration.md` | **Modify** | Add "Superseded by phase-3-design-doc.md" banner. |
+| `docs/supplemental/server-exploration.md` | **Modify** | Add "Superseded by phase-3-design-doc-server-workspace.md" banner. |
 
 ---
 

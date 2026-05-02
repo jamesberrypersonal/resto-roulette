@@ -22,7 +22,7 @@ cargo doc --open       # browse generated docs
 
 ## Architecture
 
-See `docs/initial-design-doc.md` for full detail. Forward-looking exploratory docs (not committed roadmap): `docs/list-ingestion-exploration.md` (automating the shared-list import) and `docs/server-exploration.md` (a `resto-roulette-server` sibling binary that serves the picker as a TRMNL e-ink plugin, plus the proposed Cargo workspace refactor into `core` / `cli` / `server` crates).
+See `docs/phase-1-design-doc-cli-mvp.md` for full detail. Forward-looking exploratory docs (not committed roadmap) live in `docs/supplemental/`: `list-ingestion-exploration.md` (automating the shared-list import) and `server-exploration.md` (a `resto-roulette-server` sibling binary that serves the picker as a TRMNL e-ink plugin, plus the proposed Cargo workspace refactor into `core` / `cli` / `server` crates).
 
 - **`src/main.rs`** — CLI entry point via `clap` derive macros; orchestrates the pipeline: parse → enrich (lazy, Places API) → filter closed → filter by cuisine → fetch travel times (`buffer_unordered(10)`) → bucket → pick → TUI (or plain display for `--one-shot`, `--format json`, non-TTY).
 - **`src/config.rs`** — Resolves configuration precedence: `--flag` > env var > `~/.resto-roulette/config.toml`. Note: `--home` short flag is `-H` (not `-h`, which clap reserves for `--help`).

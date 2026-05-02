@@ -1,6 +1,6 @@
 # Restaurant Roulette — Phase 2 Design Document
 
-Phase 2 adds three features identified as future enhancements in the [original design doc](initial-design-doc.md#16-future-enhancements):
+Phase 2 adds three features identified as future enhancements in the [original design doc](phase-1-design-doc-cli-mvp.md#16-future-enhancements):
 
 1. **Time-of-day awareness** — skip restaurants that are currently closed.
 2. **Cuisine awareness** — display, filter, and exclude by cuisine type.
