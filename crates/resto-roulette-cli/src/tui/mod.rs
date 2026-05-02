@@ -15,10 +15,10 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
-use crate::bucket::Buckets;
 use crate::config::OutputFormat;
 use crate::display;
-use crate::picker::Selection;
+use resto_roulette_core::bucket::Buckets;
+use resto_roulette_core::picker::Selection;
 
 use app::{Action, App, Mode, ModeKind};
 

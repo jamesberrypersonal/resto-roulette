@@ -2055,7 +2055,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "resto-roulette"
+name = "resto-roulette-cli"
 version = "1.1.0"
 dependencies = [
  "anyhow",
@@ -2063,13 +2063,28 @@ dependencies = [
  "clap",
  "colored",
  "crossterm",
- "csv",
  "dirs",
+ "ratatui",
+ "resto-roulette-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "resto-roulette-core"
+version = "1.1.0"
+dependencies = [
+ "chrono",
+ "csv",
  "futures",
  "hex",
  "proptest",
  "rand 0.10.1",
- "ratatui",
  "reqwest",
  "rusqlite",
  "serde",
@@ -2078,10 +2093,15 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
- "toml",
  "tracing",
- "tracing-subscriber",
  "wiremock",
+]
+
+[[package]]
+name = "resto-roulette-server"
+version = "1.1.0"
+dependencies = [
+ "resto-roulette-core",
 ]
 
 [[package]]

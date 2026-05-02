@@ -1,7 +1,7 @@
 use ratatui::widgets::ListState;
 
-use crate::bucket::{BucketEntry, Buckets};
-use crate::picker::{self, Selection};
+use resto_roulette_core::bucket::{BucketEntry, Buckets};
+use resto_roulette_core::picker::{self, Selection};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SortOrder {
@@ -250,9 +250,9 @@ impl<'a> App<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bucket::Bucket;
-    use crate::routing::models::TravelMode;
-    use crate::Restaurant;
+    use resto_roulette_core::bucket::Bucket;
+    use resto_roulette_core::routing::models::TravelMode;
+    use resto_roulette_core::Restaurant;
 
     fn make_entry(name: &str, secs: u32, cuisine: Option<&str>) -> BucketEntry {
         BucketEntry {

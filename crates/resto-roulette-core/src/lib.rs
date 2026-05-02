@@ -1,13 +1,11 @@
 pub mod bucket;
 pub mod cache;
-pub mod config;
-pub mod display;
 pub mod error;
 pub mod parse;
 pub mod picker;
+pub mod pipeline;
 pub mod places;
 pub mod routing;
-pub mod tui;
 
 use serde::{Deserialize, Serialize};
 

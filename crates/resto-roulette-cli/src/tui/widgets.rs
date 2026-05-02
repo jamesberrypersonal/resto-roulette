@@ -1,7 +1,7 @@
 use ratatui::{style::Style, text::Line};
 
-use crate::bucket::BucketEntry;
 use crate::display::{format_duration, format_entry_parens};
+use resto_roulette_core::bucket::BucketEntry;
 
 /// Build the name line for a bucket entry: `"{marker}{name} ({parens})"`.
 /// `marker` is typically `"  ► "` for selected or `"    "` for unselected.

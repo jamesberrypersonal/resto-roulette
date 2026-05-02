@@ -9,7 +9,7 @@ use ratatui::{
 
 use super::app::{Action, App, Mode};
 use super::widgets::{entry_detail_line, entry_name_line};
-use crate::bucket::Bucket;
+use resto_roulette_core::bucket::Bucket;
 
 pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
     let (bucket_idx, cursor) = match &app.mode {
@@ -143,12 +143,12 @@ pub fn handle_key(app: &mut App, key: KeyCode) -> Action {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bucket::{Bucket, BucketEntry, Buckets};
-    use crate::picker::Selection;
-    use crate::routing::models::TravelMode;
-    use crate::Restaurant;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use resto_roulette_core::bucket::{Bucket, BucketEntry, Buckets};
+    use resto_roulette_core::picker::Selection;
+    use resto_roulette_core::routing::models::TravelMode;
+    use resto_roulette_core::Restaurant;
 
     fn make_entry(name: &str) -> BucketEntry {
         BucketEntry {

@@ -51,7 +51,7 @@ References:
 
 ---
 
-## 3. Phase 3a: Workspace Refactor
+## 3. Phase 3a: Workspace Refactor ✓ Implemented
 
 The bulk of the implementation risk lives here. The refactor is a no-behavior-change rearrangement; CLI parity is the acceptance bar.
 
@@ -138,20 +138,20 @@ pub struct PipelineInputs {
     pub list_path: PathBuf,
     pub home: String,
     pub api_key: String,
+    pub dry_run: bool,   // moved here from EnrichOpts (applies to routing too)
     pub enrich: EnrichOpts,
 }
 
 pub struct EnrichOpts {
     pub open_now: bool,
-    pub cuisine_filter: Option<Vec<String>>,
+    pub cuisine_filter: Vec<String>,   // empty = no include-filter (not Option)
     pub exclude_cuisines: Vec<String>,
-    pub dry_run: bool,
 }
 
 impl EnrichOpts {
     /// Server v1 shortcut — bucketing only, no Places enrichment, but
     /// still reads place_details from cache for cuisine labels.
-    pub fn server_v1() -> Self { /* all-false / empty / dry_run=false */ }
+    pub fn server_v1() -> Self { /* all-false / empty */ }
 }
 
 pub async fn run(
@@ -466,16 +466,16 @@ None of this changes the core crate's API — the core stays single-tenant by ac
 
 ## 11. Phased Implementation
 
-### Phase 3a: Workspace Refactor
+### Phase 3a: Workspace Refactor ✓ Done
 
-1. Convert top-level `Cargo.toml` to a workspace manifest; create `crates/{resto-roulette-core, resto-roulette-cli, resto-roulette-server}/Cargo.toml`.
-2. `git mv` core modules (`parse`, `places`, `routing`, `cache`, `bucket.rs`, `picker.rs`, `error.rs`) into `resto-roulette-core/src/`. Move `tests/` accordingly.
-3. `git mv` CLI modules (`main.rs`, `config.rs`, `display.rs`, `tui/`) into `resto-roulette-cli/src/`.
-4. Add `pipeline.rs` to core; extract the orchestration body from CLI `main.rs` into `pipeline::run`. CLI `main.rs` shrinks to args → `pipeline::run` → display/TUI.
-5. Stub `resto-roulette-server/src/main.rs` with `fn main() {}` and a TODO. Confirms the workspace builds.
-6. `cargo build --workspace` and `cargo test --workspace` green.
-7. CLI parity check: snapshot pretty + JSON output against `sample.geojson` / `sample.csv` / `sample_maps_export.csv`; assert zero diff vs. pre-refactor.
-8. Update `README.md` install instructions; note refactor in `RELEASE_NOTES.md`.
+1. ✓ Convert top-level `Cargo.toml` to a workspace manifest; create `crates/{resto-roulette-core, resto-roulette-cli, resto-roulette-server}/Cargo.toml`.
+2. ✓ `git mv` core modules (`parse`, `places`, `routing`, `cache`, `bucket.rs`, `picker.rs`, `error.rs`) into `resto-roulette-core/src/`. Move `tests/` accordingly.
+3. ✓ `git mv` CLI modules (`main.rs`, `config.rs`, `display.rs`, `tui/`) into `resto-roulette-cli/src/`.
+4. ✓ Add `pipeline.rs` to core; extract the orchestration body from CLI `main.rs` into `pipeline::run`. CLI `main.rs` shrinks to args → `pipeline::run` → display/TUI.
+5. ✓ Stub `resto-roulette-server/src/main.rs` with a placeholder `println!`. Confirms the workspace builds.
+6. ✓ `cargo build --workspace` and `cargo test --workspace` green.
+7. ✓ CLI parity check: snapshot pretty + JSON output against `sample.geojson` / `sample.csv` / `sample_maps_export.csv`; assert zero diff vs. pre-refactor.
+8. ✓ Update `README.md` install instructions; note refactor in `RELEASE_NOTES.md`.
 
 ### Phase 3b: `resto-roulette-server`
 

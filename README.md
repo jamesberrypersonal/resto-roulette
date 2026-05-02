@@ -41,7 +41,11 @@ cd resto-roulette
 cargo build --release
 ```
 
-The binary is at `target/release/resto-roulette`.
+The binary is at `target/release/resto-roulette`. You can also build just the CLI crate:
+
+```bash
+cargo build --release -p resto-roulette-cli
+```
 
 ### 3. Get a Google Maps API key
 
@@ -184,10 +188,10 @@ The Google Routes API has a free tier of 10,000 requests per month. A typical ru
 ## Development
 
 ```bash
-cargo check                      # fast type-check
-cargo test                       # run all tests
-cargo clippy -- -D warnings      # lint
-cargo fmt                        # format
+cargo check --workspace          # fast type-check
+cargo test --workspace           # run all tests
+cargo clippy --workspace -- -D warnings  # lint
+cargo fmt --all                  # format
 ```
 
 ## License

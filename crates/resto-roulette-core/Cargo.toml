@@ -1,0 +1,31 @@
+[package]
+name = "resto-roulette-core"
+description = "Shared pipeline library for resto-roulette"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "resto_roulette_core"
+path = "src/lib.rs"
+
+[dependencies]
+reqwest    = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+csv        = { workspace = true }
+rusqlite   = { workspace = true }
+tokio      = { workspace = true }
+rand       = { workspace = true }
+thiserror  = { workspace = true }
+sha2       = { workspace = true }
+hex        = { workspace = true }
+chrono     = { workspace = true }
+tracing    = { workspace = true }
+futures    = { workspace = true }
+
+[dev-dependencies]
+wiremock = { workspace = true }
+proptest = { workspace = true }
+tempfile = { workspace = true }
+tokio    = { workspace = true }

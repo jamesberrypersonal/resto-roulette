@@ -1,87 +1,81 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
-use anyhow::Context;
 use chrono::Utc;
-use clap::Parser;
 use futures::StreamExt;
 
-use resto_roulette::{
-    bucket,
-    cache::sqlite::hash_home,
-    cache::Cache,
-    config::{self, Cli, OutputFormat},
-    display,
-    error::AppError,
-    parse, picker,
-    places::{self, PlacesClient},
-    routing::RoutingClient,
-    tui,
-};
+use crate::bucket::{self, Buckets};
+use crate::cache::Cache;
+use crate::error::AppError;
+use crate::parse;
+use crate::places::{self, PlacesClient};
+use crate::routing::RoutingClient;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+pub struct PipelineInputs {
+    pub list_path: PathBuf,
+    pub home: String,
+    pub api_key: String,
+    pub dry_run: bool,
+    pub enrich: EnrichOpts,
+}
 
-    let cli = Cli::parse();
-    let cfg = config::load(cli).context("failed to load configuration")?;
+pub struct EnrichOpts {
+    pub open_now: bool,
+    /// Empty means no include-filter.
+    pub cuisine_filter: Vec<String>,
+    pub exclude_cuisines: Vec<String>,
+}
 
-    // Parse input file
-    let restaurants = parse::parse_file(&cfg.list_path)
-        .with_context(|| format!("failed to parse {:?}", cfg.list_path))?;
+impl EnrichOpts {
+    pub fn server_v1() -> Self {
+        EnrichOpts {
+            open_now: false,
+            cuisine_filter: vec![],
+            exclude_cuisines: vec![],
+        }
+    }
+}
+
+pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppError> {
+    let restaurants = parse::parse_file(&inputs.list_path).map_err(|e| {
+        tracing::error!("Failed to parse {:?}: {}", inputs.list_path, e);
+        e
+    })?;
     tracing::info!("Loaded {} restaurants", restaurants.len());
 
     if restaurants.is_empty() {
-        eprintln!("No restaurants found in {:?}", cfg.list_path);
-        return Ok(());
+        tracing::warn!("No restaurants found in {:?}", inputs.list_path);
+        return Ok(Buckets {
+            near: vec![],
+            mid: vec![],
+            far: vec![],
+        });
     }
 
-    // Open cache
-    let cache_path = dirs::home_dir()
-        .ok_or_else(|| AppError::Config("cannot find home directory".into()))?
-        .join(".resto-roulette/cache.db");
-    let cache = Cache::open(&cache_path, cfg.cache_ttl_hours, cfg.places_cache_ttl_hours)
-        .context("failed to open cache")?;
+    let home_id = crate::cache::sqlite::hash_home(&inputs.home);
+    let client = RoutingClient::new(inputs.api_key.clone())?;
 
-    // Evict stale entries at startup (best-effort)
-    match cache.evict_expired() {
-        Ok(n) if n > 0 => tracing::debug!("Evicted {} expired cache entries", n),
-        Err(e) => tracing::warn!("Cache eviction failed: {}", e),
-        _ => {}
-    }
-    match cache.evict_expired_places() {
-        Ok(n) if n > 0 => tracing::debug!("Evicted {} expired place_details cache entries", n),
-        Err(e) => tracing::warn!("Place details cache eviction failed: {}", e),
-        _ => {}
-    }
+    let needs_enrichment = inputs.enrich.open_now
+        || !inputs.enrich.cuisine_filter.is_empty()
+        || !inputs.enrich.exclude_cuisines.is_empty();
 
-    let home_id = hash_home(&cfg.home);
-    let client = RoutingClient::new(cfg.api_key.clone()).context("failed to build HTTP client")?;
-
-    // Enrich with Places API (lazy: only when --open-now, --cuisine, or exclude_cuisines is active)
-    let needs_enrichment =
-        cfg.open_now || !cfg.cuisine.is_empty() || !cfg.exclude_cuisines.is_empty();
     let place_details_map: HashMap<String, places::PlaceDetails> = if needs_enrichment {
-        let places_client =
-            PlacesClient::new(cfg.api_key.clone()).context("failed to build Places API client")?;
+        let places_client = PlacesClient::new(inputs.api_key.clone())?;
 
         futures::stream::iter(restaurants.iter())
             .map(|restaurant| {
                 let rid = restaurant.id();
+                let dry_run = inputs.dry_run;
                 let cache = &cache;
                 let places_client = &places_client;
-                let dry_run = cfg.dry_run;
                 async move {
                     let cached = cache.get_place(&rid, dry_run).unwrap_or(None);
 
                     let details = match cached {
-                        // Fresh hit — use as-is
                         Some((details, true)) => {
                             tracing::debug!("Place cache hit (fresh) for '{}'", restaurant.name);
                             Some(details)
                         }
-                        // Stale hit in dry-run — use stale data
                         Some((details, false)) if dry_run => {
                             tracing::debug!(
                                 "Dry run: using stale place cache for '{}'",
@@ -89,7 +83,6 @@ async fn main() -> anyhow::Result<()> {
                             );
                             Some(details)
                         }
-                        // Stale hit — refresh via cheaper Place Details API
                         Some((stale, false)) => {
                             tracing::debug!(
                                 "Place cache stale for '{}', refreshing via Place Details",
@@ -118,7 +111,6 @@ async fn main() -> anyhow::Result<()> {
                             }
                             result
                         }
-                        // Miss in dry-run — fail-open (can't determine open status)
                         None if dry_run => {
                             tracing::debug!(
                                 "Dry run: no place cache for '{}', keeping (fail-open)",
@@ -126,7 +118,6 @@ async fn main() -> anyhow::Result<()> {
                             );
                             None
                         }
-                        // Miss — resolve via Text Search
                         None => {
                             tracing::debug!("Fetching place details for '{}'", restaurant.name);
                             let fetched = places_client
@@ -163,9 +154,6 @@ async fn main() -> anyhow::Result<()> {
             .filter_map(|(rid, opt)| opt.map(|d| (rid, d)))
             .collect()
     } else {
-        // No active enrichment flags, but still read cached place details so
-        // cuisine labels appear in the TUI for previously-enriched restaurants.
-        // dry_run=true: accept stale entries, make zero API calls.
         restaurants
             .iter()
             .filter_map(|r| {
@@ -178,91 +166,98 @@ async fn main() -> anyhow::Result<()> {
             .collect()
     };
 
-    // Filter closed restaurants (only when --open-now)
-    let restaurants = if cfg.open_now {
+    let restaurants = if inputs.enrich.open_now {
         let now = Utc::now();
         let original_len = restaurants.len();
         let open: Vec<_> = restaurants
             .into_iter()
-            .filter(|r| {
-                match place_details_map.get(&r.id()) {
-                    Some(d) => match (&d.hours, d.utc_offset_minutes) {
-                        (Some(h), Some(offset)) => places::hours::is_open_at(h, offset, now),
-                        _ => true, // no hours or offset = fail-open
-                    },
-                    None => true, // no details = fail-open
-                }
+            .filter(|r| match place_details_map.get(&r.id()) {
+                Some(d) => match (&d.hours, d.utc_offset_minutes) {
+                    (Some(h), Some(offset)) => places::hours::is_open_at(h, offset, now),
+                    _ => true,
+                },
+                None => true,
             })
             .collect();
         let skipped = original_len - open.len();
         if skipped > 0 {
-            eprintln!(
+            tracing::info!(
                 "Skipped {} closed restaurant{}.",
                 skipped,
                 if skipped == 1 { "" } else { "s" }
             );
         }
         if open.is_empty() {
-            eprintln!("No open restaurants found. Try without --open-now.");
-            return Ok(());
+            tracing::warn!("No open restaurants found. Try without --open-now.");
+            return Ok(Buckets {
+                near: vec![],
+                mid: vec![],
+                far: vec![],
+            });
         }
         open
     } else {
         restaurants
     };
 
-    // Build cuisine map from enriched place details
     let cuisine_map: HashMap<String, Vec<String>> = place_details_map
         .iter()
         .map(|(rid, d)| (rid.clone(), places::extract_cuisines(&d.types)))
         .collect();
 
-    // Filter by cuisine (only when --cuisine or exclude_cuisines is set)
-    let restaurants = if !cfg.cuisine.is_empty() || !cfg.exclude_cuisines.is_empty() {
-        let original_len = restaurants.len();
-        let filtered: Vec<_> = restaurants
-            .into_iter()
-            .filter(|r| {
-                let cuisines = cuisine_map
-                    .get(&r.id())
-                    .map(|v| v.as_slice())
-                    .unwrap_or(&[]);
-                if cuisines.is_empty() {
-                    return true; // no recognized cuisine = pass through
-                }
-                if !cfg.cuisine.is_empty() {
-                    cuisines.iter().any(|c| cfg.cuisine.contains(c))
-                } else {
-                    !cuisines.iter().any(|c| cfg.exclude_cuisines.contains(c))
-                }
-            })
-            .collect();
-        let skipped = original_len - filtered.len();
-        if skipped > 0 {
-            eprintln!(
-                "Skipped {} restaurant{} by cuisine filter.",
-                skipped,
-                if skipped == 1 { "" } else { "s" }
-            );
-        }
-        if filtered.is_empty() {
-            eprintln!("No restaurants matched the cuisine filter.");
-            return Ok(());
-        }
-        filtered
-    } else {
-        restaurants
-    };
+    let restaurants =
+        if !inputs.enrich.cuisine_filter.is_empty() || !inputs.enrich.exclude_cuisines.is_empty() {
+            let original_len = restaurants.len();
+            let filtered: Vec<_> = restaurants
+                .into_iter()
+                .filter(|r| {
+                    let cuisines = cuisine_map
+                        .get(&r.id())
+                        .map(|v| v.as_slice())
+                        .unwrap_or(&[]);
+                    if cuisines.is_empty() {
+                        return true;
+                    }
+                    if !inputs.enrich.cuisine_filter.is_empty() {
+                        cuisines
+                            .iter()
+                            .any(|c| inputs.enrich.cuisine_filter.contains(c))
+                    } else {
+                        !cuisines
+                            .iter()
+                            .any(|c| inputs.enrich.exclude_cuisines.contains(c))
+                    }
+                })
+                .collect();
+            let skipped = original_len - filtered.len();
+            if skipped > 0 {
+                tracing::info!(
+                    "Skipped {} restaurant{} by cuisine filter.",
+                    skipped,
+                    if skipped == 1 { "" } else { "s" }
+                );
+            }
+            if filtered.is_empty() {
+                tracing::warn!("No restaurants matched the cuisine filter.");
+                return Ok(Buckets {
+                    near: vec![],
+                    mid: vec![],
+                    far: vec![],
+                });
+            }
+            filtered
+        } else {
+            restaurants
+        };
 
-    // Fetch travel times: check cache first, call API for misses (concurrently)
     let all_times: HashMap<String, _> = futures::stream::iter(restaurants.iter())
         .map(|restaurant| {
             let rid = restaurant.id();
+            let dry_run = inputs.dry_run;
+            let home = &inputs.home;
             let home_id = &home_id;
             let cache = &cache;
             let client = &client;
-            let home = &cfg.home;
-            let dry_run = cfg.dry_run;
             async move {
                 let cached = cache.get(&rid, home_id, dry_run).unwrap_or_default();
 
@@ -301,26 +296,13 @@ async fn main() -> anyhow::Result<()> {
         .collect()
         .await;
 
-    // Bucket and pick
     let buckets = bucket::assign(&restaurants, &all_times, &cuisine_map);
 
     if buckets.near.is_empty() && buckets.mid.is_empty() && buckets.far.is_empty() {
-        eprintln!("No restaurants could be bucketed (try running without --dry-run to fetch travel times).");
-        return Ok(());
+        tracing::warn!(
+            "No restaurants could be bucketed (try running without --dry-run to fetch travel times)."
+        );
     }
 
-    let selection = picker::pick_random(&buckets);
-
-    use std::io::IsTerminal;
-    let use_tui = std::io::stdout().is_terminal()
-        && cfg.format == OutputFormat::Pretty
-        && (cfg.explore || cfg.reroll);
-
-    if use_tui {
-        tui::run(&buckets, selection, cfg.explore).context("TUI error")?;
-    } else {
-        display::render(&selection, cfg.format);
-    }
-
-    Ok(())
+    Ok(buckets)
 }

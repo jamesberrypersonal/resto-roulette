@@ -9,8 +9,8 @@ use ratatui::{
 
 use super::app::{Action, App, Mode};
 use super::widgets::entry_name_line;
-use crate::bucket::{Bucket, BucketEntry};
 use crate::display::{capitalize, format_duration};
+use resto_roulette_core::bucket::{Bucket, BucketEntry};
 
 pub fn draw(f: &mut Frame, app: &mut App, area: Rect) {
     let (active_bucket, search_query, search_active, sort_order) = match &app.mode {
@@ -387,12 +387,12 @@ fn switch_explorer_bucket(app: &mut App, new_bucket: usize) {
 mod tests {
     use super::super::app::SortOrder;
     use super::*;
-    use crate::bucket::{Bucket, BucketEntry, Buckets};
-    use crate::picker::Selection;
-    use crate::routing::models::TravelMode;
-    use crate::Restaurant;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use resto_roulette_core::bucket::{Bucket, BucketEntry, Buckets};
+    use resto_roulette_core::picker::Selection;
+    use resto_roulette_core::routing::models::TravelMode;
+    use resto_roulette_core::Restaurant;
 
     fn make_entry(name: &str, cuisine: Option<&str>) -> BucketEntry {
         BucketEntry {

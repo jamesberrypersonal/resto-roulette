@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use resto_roulette::bucket::assign;
-use resto_roulette::routing::models::TravelTimes;
-use resto_roulette::Restaurant;
+use resto_roulette_core::bucket::assign;
+use resto_roulette_core::routing::models::TravelTimes;
+use resto_roulette_core::Restaurant;
 
 fn restaurant(name: &str) -> Restaurant {
     Restaurant {

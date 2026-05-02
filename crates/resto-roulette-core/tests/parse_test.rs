@@ -1,4 +1,4 @@
-use resto_roulette::parse::parse_file;
+use resto_roulette_core::parse::parse_file;
 use std::path::PathBuf;
 
 fn fixtures_dir() -> PathBuf {

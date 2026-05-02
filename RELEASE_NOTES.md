@@ -1,5 +1,9 @@
 # Release Notes
 
+## Unreleased
+
+- Internal: workspace refactor — pipeline extracted into `resto-roulette-core`. CLI behavior unchanged.
+
 ## v1.1.0
 
 - Add per-bucket candidate browsing: press `Tab`/`l`/`→` in the TUI to scroll through all restaurants in the selected bucket and pick one manually

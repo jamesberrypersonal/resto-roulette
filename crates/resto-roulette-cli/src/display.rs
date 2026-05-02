@@ -1,9 +1,9 @@
 use colored::Colorize;
 use serde::Serialize;
 
-use crate::bucket::{Bucket, BucketEntry};
 use crate::config::OutputFormat;
-use crate::picker::Selection;
+use resto_roulette_core::bucket::{Bucket, BucketEntry};
+use resto_roulette_core::picker::Selection;
 
 pub fn render(selection: &Selection, format: OutputFormat) {
     match format {
@@ -137,9 +137,9 @@ pub(crate) fn format_duration(secs: u32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bucket::Bucket;
-    use crate::routing::models::TravelMode;
-    use crate::Restaurant;
+    use resto_roulette_core::bucket::Bucket;
+    use resto_roulette_core::routing::models::TravelMode;
+    use resto_roulette_core::Restaurant;
 
     fn make_entry(name: &str, address: &str, cuisines: Vec<String>) -> BucketEntry {
         BucketEntry {

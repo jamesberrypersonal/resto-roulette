@@ -1,0 +1,13 @@
+[package]
+name = "resto-roulette-server"
+description = "TRMNL plugin server for resto-roulette (phase 3b)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "resto-roulette-server"
+path = "src/main.rs"
+
+[dependencies]
+resto-roulette-core = { path = "../resto-roulette-core" }

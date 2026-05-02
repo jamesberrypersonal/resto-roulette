@@ -1,10 +1,10 @@
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use resto_roulette::bucket::{Bucket, BucketEntry, Buckets};
-use resto_roulette::picker::pick;
-use resto_roulette::routing::models::TravelMode;
-use resto_roulette::Restaurant;
+use resto_roulette_core::bucket::{Bucket, BucketEntry, Buckets};
+use resto_roulette_core::picker::pick;
+use resto_roulette_core::routing::models::TravelMode;
+use resto_roulette_core::Restaurant;
 
 fn entry(name: &str, bucket: Bucket) -> BucketEntry {
     BucketEntry {

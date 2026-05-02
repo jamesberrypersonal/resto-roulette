@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 use serde::Deserialize;
 
-use crate::error::{AppError, Result};
+use resto_roulette_core::error::{AppError, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OutputFormat {
