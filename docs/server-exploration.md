@@ -1,5 +1,7 @@
 # Design Exploration: `resto-roulette-server` (TRMNL Plugin)
 
+> **Superseded by [`phase-3-design-doc.md`](phase-3-design-doc.md).** This document remains for historical context; decisions that were open here are locked in the phase 3 doc.
+
 > **Note:** This is an exploratory document for a potential next phase of resto-roulette. It is not a committed roadmap item — scope, timing, and final architecture are undecided. The aim is to map out the shape of the work before any code is written.
 
 ## Context
