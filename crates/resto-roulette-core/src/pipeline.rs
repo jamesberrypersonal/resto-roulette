@@ -62,9 +62,12 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
     let place_details_map: HashMap<String, places::PlaceDetails> = if needs_enrichment {
         let places_client = PlacesClient::new(inputs.api_key.clone())?;
 
-        futures::stream::iter(restaurants.iter())
-            .map(|restaurant| {
-                let rid = restaurant.id();
+        let restaurant_data: Vec<_> = restaurants
+            .iter()
+            .map(|r| (r.id(), r.name.clone(), r.address.clone()))
+            .collect();
+        futures::stream::iter(restaurant_data)
+            .map(|(rid, name, address)| {
                 let dry_run = inputs.dry_run;
                 let cache = &cache;
                 let places_client = &places_client;
@@ -73,20 +76,17 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
 
                     let details = match cached {
                         Some((details, true)) => {
-                            tracing::debug!("Place cache hit (fresh) for '{}'", restaurant.name);
+                            tracing::debug!("Place cache hit (fresh) for '{}'", name);
                             Some(details)
                         }
                         Some((details, false)) if dry_run => {
-                            tracing::debug!(
-                                "Dry run: using stale place cache for '{}'",
-                                restaurant.name
-                            );
+                            tracing::debug!("Dry run: using stale place cache for '{}'", name);
                             Some(details)
                         }
                         Some((stale, false)) => {
                             tracing::debug!(
                                 "Place cache stale for '{}', refreshing via Place Details",
-                                restaurant.name
+                                name
                             );
                             let refreshed = places_client
                                 .place_details(&stale.place_id)
@@ -94,7 +94,7 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
                                 .unwrap_or_else(|e| {
                                     tracing::warn!(
                                         "Failed to refresh place details for '{}': {}",
-                                        restaurant.name,
+                                        name,
                                         e
                                     );
                                     None
@@ -104,7 +104,7 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
                                 if let Err(e) = cache.put_place(&rid, d) {
                                     tracing::warn!(
                                         "Failed to cache place details for '{}': {}",
-                                        restaurant.name,
+                                        name,
                                         e
                                     );
                                 }
@@ -114,19 +114,19 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
                         None if dry_run => {
                             tracing::debug!(
                                 "Dry run: no place cache for '{}', keeping (fail-open)",
-                                restaurant.name
+                                name
                             );
                             None
                         }
                         None => {
-                            tracing::debug!("Fetching place details for '{}'", restaurant.name);
+                            tracing::debug!("Fetching place details for '{}'", name);
                             let fetched = places_client
-                                .text_search(&restaurant.name, &restaurant.address)
+                                .text_search(&name, &address)
                                 .await
                                 .unwrap_or_else(|e| {
                                     tracing::warn!(
                                         "Failed to fetch place details for '{}': {}",
-                                        restaurant.name,
+                                        name,
                                         e
                                     );
                                     None
@@ -135,7 +135,7 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
                                 if let Err(e) = cache.put_place(&rid, d) {
                                     tracing::warn!(
                                         "Failed to cache place details for '{}': {}",
-                                        restaurant.name,
+                                        name,
                                         e
                                     );
                                 }
@@ -250,9 +250,12 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
             restaurants
         };
 
-    let all_times: HashMap<String, _> = futures::stream::iter(restaurants.iter())
-        .map(|restaurant| {
-            let rid = restaurant.id();
+    let restaurant_data2: Vec<_> = restaurants
+        .iter()
+        .map(|r| (r.id(), r.name.clone(), r.address.clone()))
+        .collect();
+    let all_times: HashMap<String, _> = futures::stream::iter(restaurant_data2)
+        .map(|(rid, name, address)| {
             let dry_run = inputs.dry_run;
             let home = &inputs.home;
             let home_id = &home_id;
@@ -262,29 +265,22 @@ pub async fn run(inputs: &PipelineInputs, cache: &Cache) -> Result<Buckets, AppE
                 let cached = cache.get(&rid, home_id, dry_run).unwrap_or_default();
 
                 let times = if cached.is_complete() {
-                    tracing::debug!("Cache hit for '{}'", restaurant.name);
+                    tracing::debug!("Cache hit for '{}'", name);
                     cached
                 } else if dry_run {
-                    tracing::debug!(
-                        "Dry run: using partial/empty cache for '{}'",
-                        restaurant.name
-                    );
+                    tracing::debug!("Dry run: using partial/empty cache for '{}'", name);
                     cached
                 } else {
-                    tracing::debug!("Fetching travel times for '{}'", restaurant.name);
+                    tracing::debug!("Fetching travel times for '{}'", name);
                     let fetched = client
-                        .get_travel_times(home, &restaurant.address)
+                        .get_travel_times(home, &address)
                         .await
                         .unwrap_or_else(|e| {
-                            tracing::warn!(
-                                "Failed to fetch times for '{}': {}",
-                                restaurant.name,
-                                e
-                            );
+                            tracing::warn!("Failed to fetch times for '{}': {}", name, e);
                             Default::default()
                         });
                     if let Err(e) = cache.put(&rid, home_id, &fetched) {
-                        tracing::warn!("Failed to cache times for '{}': {}", restaurant.name, e);
+                        tracing::warn!("Failed to cache times for '{}': {}", name, e);
                     }
                     fetched
                 };

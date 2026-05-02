@@ -264,7 +264,10 @@ Env vars override the file for `api_key` (`GOOGLE_MAPS_API_KEY`) and `auth_token
 
 `pipeline::run` is `async` and stateless. The only shared mutable resource is the SQLite cache. The CLI is single-shot so it didn't need synchronization; the server wraps the `Cache` in `tokio::sync::Mutex`. Routes API calls inside `pipeline::run` already use `buffer_unordered(10)`, which is unchanged.
 
-This is the **only** behavioral difference between the binaries' usage of `core`.
+Two core changes were required to make `pipeline::run` produce a `Send` future (required by axum):
+
+1. **`Cache` wraps `Connection` in `std::sync::Mutex`** — `rusqlite::Connection` is `!Sync`, so `&Cache` was `!Send`. Wrapping the connection in a `Mutex` makes `Cache: Sync` without changing any public API. All callers are unaffected.
+2. **Pipeline stream closures pre-collect to owned tuples** — the two `buffer_unordered` streams previously mapped over `restaurants.iter()` with closures taking `&Restaurant`. A Rust HRTB limitation makes such closures non-`Send` when the future must be `Send`. Both streams now pre-collect `(rid, name, address)` triples so the stream items are owned and the closures are HRTB-compatible.
 
 ### Logging
 
@@ -479,12 +482,12 @@ None of this changes the core crate's API — the core stays single-tenant by ac
 
 ### Phase 3b: `resto-roulette-server`
 
-1. Add `axum`, `tower-http`, `subtle`, `tracing-subscriber`, `toml` to `resto-roulette-server/Cargo.toml`.
-2. Implement `config.rs` (`server.toml` loader with env-var overrides for `GOOGLE_MAPS_API_KEY` and `RESTO_AUTH_TOKEN`).
-3. Implement `auth.rs` (axum middleware, constant-time token comparison).
-4. Implement `render.rs` (`Buckets → TrmnlResponse` with cache-only cuisine passthrough).
-5. Wire `main.rs`: load config → open `Cache` (in `Arc<Mutex<_>>`) → build router (`/healthz`, `/trmnl` behind auth) → `axum::serve`.
-6. Unit tests for `render`; integration tests with `Router::oneshot`.
+1. ✓ Add `axum`, `tower-http`, `subtle`, `tracing-subscriber`, `toml` to `resto-roulette-server/Cargo.toml`.
+2. ✓ Implement `config.rs` (`server.toml` loader with env-var overrides for `GOOGLE_MAPS_API_KEY` and `RESTO_AUTH_TOKEN`).
+3. ✓ Implement `auth.rs` (axum middleware, constant-time token comparison).
+4. ✓ Implement `render.rs` (`Selection → TrmnlResponse` with cache-only cuisine passthrough). Note: takes `Selection` not `Buckets` directly — picker is called in the handler before render.
+5. ✓ Wire `main.rs`: load config → open `Cache` (in `Arc<Mutex<_>>`) → build router (`/healthz`, `/trmnl` behind auth) → `axum::serve`. Router construction extracted into `app.rs`; `[lib]` target added so integration tests can import `build_app`/`AppState`.
+6. ✓ Unit tests for `render` and `config`; integration tests with `Router::oneshot` (auth cases + response shape + `/healthz`).
 7. Add `deploy/systemd/resto-roulette-server.service` and `deploy/cloudflared.config.yml`.
 8. Cross-compile recipe documented in README server section.
 9. Deploy to Pi, configure Cloudflare Tunnel, configure TRMNL Private Plugin pointed at the public URL.

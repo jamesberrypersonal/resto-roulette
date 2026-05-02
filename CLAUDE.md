@@ -25,7 +25,7 @@ This is a Cargo workspace with three crates under `crates/`:
 
 - **`crates/resto-roulette-core`** — shared library (`resto_roulette_core`): pipeline, parsers, routing, places, cache, bucket, picker, error types, `Restaurant`/`LatLng` structs.
 - **`crates/resto-roulette-cli`** — CLI binary (`resto-roulette`): config, display, TUI, `main.rs`.
-- **`crates/resto-roulette-server`** — server binary placeholder (phase 3b).
+- **`crates/resto-roulette-server`** — server binary and library (`resto_roulette_server`): axum HTTP server exposing `/healthz` and `/trmnl` for TRMNL e-ink plugin integration. Modules: `config.rs` (server.toml loader), `auth.rs` (constant-time token middleware), `render.rs` (`Selection → TrmnlResponse`), `app.rs` (router construction). Also exposes a `[lib]` target so integration tests can import `build_app` and `AppState`.
 
 See `docs/phase-1-design-doc-cli-mvp.md` for full detail. See `docs/phase-3-design-doc-server-workspace.md` for the workspace design and phase 3b server plans.
 
@@ -41,7 +41,7 @@ See `docs/phase-1-design-doc-cli-mvp.md` for full detail. See `docs/phase-3-desi
   - `hours.rs` — `is_open_at(hours, utc_offset_minutes, now_utc)` function. Uses the restaurant's own UTC offset (not system timezone) for correctness when travelling. Handles midnight rollover and the Saturday→Sunday week boundary.
   - `cuisine.rs` — `display_name(google_type)` maps Google Places types (e.g. `"vietnamese_restaurant"`) to normalized lowercase display names (e.g. `"vietnamese"`). `extract_cuisines(types)` extracts all recognized cuisines from a place's type list.
 - **`routing/`** — HTTP client (`client.rs`) for Google Routes API. Queries all four travel modes (walk/bike/transit/drive) per restaurant in parallel via `tokio::join!`. The `X-Goog-FieldMask: routes.duration` header is required to stay on the Basic SKU. Response durations are protobuf strings (`"720s"`) requiring custom deserialization.
-- **`cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Has two tables: `travel_times` (key: SHA-256(name+address) + SHA-256(home) + mode, TTL: 1 week) and `place_details` (key: SHA-256(name+address), TTL: 30 days). Both tables are evicted at startup. `Cache::open` takes separate TTL parameters for each table.
+- **`cache/sqlite.rs`** — SQLite cache at `~/.resto-roulette/cache.db`. Has two tables: `travel_times` (key: SHA-256(name+address) + SHA-256(home) + mode, TTL: 1 week) and `place_details` (key: SHA-256(name+address), TTL: 30 days). Both tables are evicted at startup. `Cache::open` takes separate TTL parameters for each table. `rusqlite::Connection` is wrapped in `std::sync::Mutex` so `Cache: Sync`, making `&Cache: Send` for the server's async pipeline futures.
 - **`bucket.rs`** — Assigns each restaurant to exactly one bucket (the nearest it qualifies for). Mode eligibility per bucket: Near (walk/bike/transit), Mid (bike/transit only), Far (bike/transit/drive). `BucketEntry` carries a `cuisines: Vec<String>` field populated from the cuisine map passed to `assign()`.
 - **`picker.rs`** — Random selection from each bucket; takes generic `R: Rng` for deterministic tests. `pick_one_random(candidates)` is the public convenience wrapper used by the TUI for per-bucket re-rolling.
 - **`error.rs`** — Unified `AppError` enum via `thiserror`.

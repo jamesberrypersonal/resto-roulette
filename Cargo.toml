@@ -32,3 +32,7 @@ crossterm          = "0.29"
 wiremock           = "0.6"
 proptest           = "1"
 tempfile           = "3"
+axum               = { version = "0.7", features = ["macros"] }
+tower-http         = { version = "0.6", features = ["trace", "timeout"] }
+tower              = "0.5"
+subtle             = "2"

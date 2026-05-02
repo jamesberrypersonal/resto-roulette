@@ -11,7 +11,9 @@ use crate::places::models::PlaceDetails;
 use crate::routing::models::{TravelMode, TravelTimes};
 
 pub struct Cache {
-    conn: Connection,
+    // Wrapped in Mutex so that &Cache: Send — required for the server's async pipeline futures.
+    // rusqlite::Connection is Send but !Sync; Mutex<Connection> is both Send and Sync.
+    conn: std::sync::Mutex<Connection>,
     ttl: Duration,
     places_ttl: Duration,
 }
@@ -43,7 +45,7 @@ impl Cache {
         )?;
 
         Ok(Self {
-            conn,
+            conn: std::sync::Mutex::new(conn),
             ttl: Duration::hours(ttl_hours as i64),
             places_ttl: Duration::hours(places_ttl_hours as i64),
         })
@@ -58,7 +60,8 @@ impl Cache {
             Some(Utc::now() - self.ttl)
         };
 
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
             "SELECT mode, duration_secs, fetched_at
              FROM travel_times
              WHERE restaurant_id = ?1 AND home_id = ?2",
@@ -110,9 +113,10 @@ impl Cache {
             (times.drive_secs, TravelMode::Drive),
         ];
 
+        let conn = self.conn.lock().unwrap();
         for (secs_opt, mode) in entries {
             if let Some(secs) = secs_opt {
-                self.conn.execute(
+                conn.execute(
                     "INSERT OR REPLACE INTO travel_times
                      (restaurant_id, home_id, mode, duration_secs, fetched_at)
                      VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -138,7 +142,8 @@ impl Cache {
         restaurant_id: &str,
         dry_run: bool,
     ) -> Result<Option<(PlaceDetails, bool)>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
             "SELECT place_id, types_json, hours_json, utc_offset_minutes, fetched_at
              FROM place_details
              WHERE restaurant_id = ?1",
@@ -195,7 +200,7 @@ impl Cache {
             .transpose()?;
         let now = Utc::now().to_rfc3339();
 
-        self.conn.execute(
+        self.conn.lock().unwrap().execute(
             "INSERT OR REPLACE INTO place_details
              (restaurant_id, place_id, types_json, hours_json, utc_offset_minutes, fetched_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -215,7 +220,7 @@ impl Cache {
     /// Delete expired place_details entries. Call at startup to keep the file small.
     pub fn evict_expired_places(&self) -> Result<usize> {
         let cutoff = (Utc::now() - self.places_ttl).to_rfc3339();
-        let deleted = self.conn.execute(
+        let deleted = self.conn.lock().unwrap().execute(
             "DELETE FROM place_details WHERE fetched_at < ?1",
             params![cutoff],
         )?;
@@ -225,7 +230,7 @@ impl Cache {
     /// Delete expired entries. Call at startup to keep the file small.
     pub fn evict_expired(&self) -> Result<usize> {
         let cutoff = (Utc::now() - self.ttl).to_rfc3339();
-        let deleted = self.conn.execute(
+        let deleted = self.conn.lock().unwrap().execute(
             "DELETE FROM travel_times WHERE fetched_at < ?1",
             params![cutoff],
         )?;

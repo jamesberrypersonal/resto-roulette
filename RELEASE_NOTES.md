@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Internal: workspace refactor — pipeline extracted into `resto-roulette-core`. CLI behavior unchanged.
+- New `resto-roulette-server` binary: serves daily restaurant picks as a [TRMNL](https://usetrmnl.com) e-ink plugin. Exposes `GET /healthz` and `GET /trmnl` (token-authenticated) returning JSON with one pick per bucket. Configure via `~/.resto-roulette/server.toml`.
 
 ## v1.1.0
 
