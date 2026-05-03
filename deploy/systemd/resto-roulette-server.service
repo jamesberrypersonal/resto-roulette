@@ -1,0 +1,15 @@
+[Unit]
+Description=resto-roulette TRMNL plugin server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=resto
+ExecStart=/usr/local/bin/resto-roulette-server
+EnvironmentFile=/etc/resto-roulette/secrets.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

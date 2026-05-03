@@ -488,12 +488,12 @@ None of this changes the core crate's API — the core stays single-tenant by ac
 4. ✓ Implement `render.rs` (`Selection → TrmnlResponse` with cache-only cuisine passthrough). Note: takes `Selection` not `Buckets` directly — picker is called in the handler before render.
 5. ✓ Wire `main.rs`: load config → open `Cache` (in `Arc<Mutex<_>>`) → build router (`/healthz`, `/trmnl` behind auth) → `axum::serve`. Router construction extracted into `app.rs`; `[lib]` target added so integration tests can import `build_app`/`AppState`.
 6. ✓ Unit tests for `render` and `config`; integration tests with `Router::oneshot` (auth cases + response shape + `/healthz`).
-7. Add `deploy/systemd/resto-roulette-server.service` and `deploy/cloudflared.config.yml`.
-8. Cross-compile recipe documented in README server section.
+7. ✓ Add `deploy/systemd/resto-roulette-server.service` and `deploy/cloudflared.config.yml`.
+8. ✓ Cross-compile recipe documented in README server section.
 9. Deploy to Pi, configure Cloudflare Tunnel, configure TRMNL Private Plugin pointed at the public URL.
-10. Sketch a Liquid template for the three-bucket layout (lives on TRMNL, not in this repo; capture the JSON contract in this doc + a note in README).
+10. ✓ Liquid template sketch in `docs/trmnl-liquid-template.md`; JSON contract in README. (Install into TRMNL UI on deployment day.)
 11. Live device test: force-refresh from TRMNL UI, verify all three picks render and re-roll on subsequent refreshes.
-12. `RELEASE_NOTES.md` user-facing entry for the server binary.
+12. ✓ `RELEASE_NOTES.md` user-facing entry for the server binary.
 
 ---
 

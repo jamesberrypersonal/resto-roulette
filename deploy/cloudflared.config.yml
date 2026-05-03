@@ -1,0 +1,9 @@
+# Cloudflare Tunnel ingress config — reference template.
+# Fill in <tunnel-id> and <your-domain> before use.
+# Run: cloudflared tunnel run
+tunnel: <tunnel-id>
+credentials-file: /home/resto/.cloudflared/<tunnel-id>.json
+ingress:
+  - hostname: resto.<your-domain>
+    service: http://127.0.0.1:8080
+  - service: http_status:404

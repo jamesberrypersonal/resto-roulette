@@ -194,6 +194,62 @@ cargo clippy --workspace -- -D warnings  # lint
 cargo fmt --all                  # format
 ```
 
+## Server (TRMNL plugin)
+
+`resto-roulette-server` is a sibling binary that serves the picker as a [TRMNL](https://usetrmnl.com) e-ink plugin. On each request it runs the full pipeline and returns one pick per bucket as JSON, which TRMNL renders via a Liquid template on the device. See [`docs/phase-3-design-doc-server-workspace.md`](docs/phase-3-design-doc-server-workspace.md) for the full design.
+
+### Configure
+
+Create `~/.resto-roulette/server.toml`:
+
+```toml
+home       = "123 Rue Saint-Denis, Montréal, QC"
+list_path  = "/var/lib/resto-roulette/list.geojson"
+api_key    = "AIza..."           # overridden by GOOGLE_MAPS_API_KEY env var
+auth_token = "long-random-hex"   # overridden by RESTO_AUTH_TOKEN env var
+bind_addr  = "127.0.0.1:8080"
+```
+
+`api_key` and `auth_token` can be kept out of the file and supplied via environment variables instead.
+
+### Run locally
+
+```bash
+cargo run -p resto-roulette-server
+curl -sf http://localhost:8080/healthz
+curl -sf 'http://localhost:8080/trmnl?token=<RESTO_AUTH_TOKEN>' | jq .
+```
+
+`/healthz` requires no auth. `/trmnl` accepts the token via query param (`?token=`) or `X-Auth-Token` header.
+
+### JSON response
+
+```json
+{
+  "generated_at": "2026-05-02T08:00:00Z",
+  "near": { "name": "Hà", "address": "243 Rue De Bleury", "duration_minutes": 12, "mode": "walk", "cuisine": "vietnamese" },
+  "mid":  { "name": "Schwartz's", "address": "3895 Saint-Laurent Blvd", "duration_minutes": 22, "mode": "bike", "cuisine": null },
+  "far":  { "name": "Joe Beef", "address": "2491 Notre-Dame St W", "duration_minutes": 38, "mode": "drive", "cuisine": null }
+}
+```
+
+Empty buckets render as `null`. `cuisine` is `null` when not cached from a previous CLI run with `--cuisine` or `--open-now`.
+
+### Cross-compile for Raspberry Pi
+
+```bash
+cargo install cross
+cross build --release --target aarch64-unknown-linux-musl -p resto-roulette-server
+scp target/aarch64-unknown-linux-musl/release/resto-roulette-server pi@homepi:/usr/local/bin/
+```
+
+Reference deployment files are in `deploy/`:
+
+- [`deploy/systemd/resto-roulette-server.service`](deploy/systemd/resto-roulette-server.service) — systemd unit (uses `EnvironmentFile=/etc/resto-roulette/secrets.env` for secrets)
+- [`deploy/cloudflared.config.yml`](deploy/cloudflared.config.yml) — Cloudflare Tunnel ingress template
+
+The TRMNL Private Plugin URL becomes `https://resto.<your-domain>/trmnl?token=<RESTO_AUTH_TOKEN>`. See [`docs/trmnl-liquid-template.md`](docs/trmnl-liquid-template.md) for the Liquid template to paste into the plugin UI.
+
 ## License
 
 MIT
